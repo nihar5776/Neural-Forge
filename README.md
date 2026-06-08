@@ -59,7 +59,7 @@ The project directory consists of the following components:
       - [interview.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/interview.routes.js): PDF resume upload and AI analysis generation routes.
     - **[controllers/](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers)**:
       - [user.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/user.controller.js): Route handlers for auth operations. Contains [userRegisterController](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/user.controller.js#L6), [userloginController](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/user.controller.js#L31), [userLogoutController](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/user.controller.js#L67), and [getUserController](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/user.controller.js#L93).
-      - [interview.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/interview.controller.js): Handler for uploading and generating AI reports. Contains [generateUserInterviewReport](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/interview.controller.js#L6).
+      - [interview.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/interview.controller.js): Handler for uploading, generating, and retrieving reports. Contains [generateUserInterviewReport](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/interview.controller.js#L7) and [getUserInterviewReportsHistory](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/interview.controller.js#L46).
     - **[middlewares/](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/middlewares)**:
       - [auth.middleware.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/middlewares/auth.middleware.js): Token checking and blacklisting check via [authUser](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/middlewares/auth.middleware.js#L4).
       - [file.middleware.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/middlewares/file.middleware.js): Sets up [upload](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/middlewares/file.middleware.js#L3) via Multer memory storage.
@@ -194,17 +194,19 @@ npm install
 
 ### 📝 Interview Preparation Endpoints
 
-#### 1. Generate Interview Report
+#### 1. Generate & Save Interview Report
 - **Route**: `POST /api/interview/`
+- **Headers**: Cookies must contain `token=<jwt_token>` (required)
 - **Body (`multipart/form-data`)**:
   - `resume`: PDF resume file (required)
   - `selfDescription`: String (optional)
   - `jobDescription`: String (optional)
-- **Response (`201 Created`)**:
+- **Response (`201 Created`)** (Saves the report dynamically to MongoDB linked to the active user profile):
   ```json
   {
     "status": "Successful",
     "response": {
+      "_id": "60d0fe4f5311236168a109c4",
       "title": "Software Engineer",
       "matchScore": 85,
       "technicalQuestions": [
@@ -233,7 +235,38 @@ npm install
           "focus": "Algorithm Practice",
           "tasks": ["Solve two graph theory challenges"]
         }
-      ]
+      ],
+      "user": "60d0fe4f5311236168a109a2",
+      "jobDescription": "General Profile Assessment",
+      "selfDescription": "",
+      "createdAt": "2026-06-08T11:30:00.000Z",
+      "updatedAt": "2026-06-08T11:30:00.000Z"
     }
+  }
+  ```
+
+#### 2. Get User Report History
+- **Route**: `GET /api/interview/history`
+- **Headers**: Cookies must contain `token=<jwt_token>` (required)
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "status": "Successful",
+    "reports": [
+      {
+        "_id": "60d0fe4f5311236168a109c4",
+        "title": "Software Engineer",
+        "matchScore": 85,
+        "technicalQuestions": [...],
+        "behavioralQuestions": [...],
+        "skillGaps": [...],
+        "preparationPlan": [...],
+        "user": "60d0fe4f5311236168a109a2",
+        "jobDescription": "General Profile Assessment",
+        "selfDescription": "",
+        "createdAt": "2026-06-08T11:30:00.000Z",
+        "updatedAt": "2026-06-08T11:30:00.000Z"
+      }
+    ]
   }
   ```
