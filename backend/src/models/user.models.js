@@ -1,6 +1,10 @@
 const mongoose = require("mongoose")
 const bcrypt = require('bcrypt');
 
+const ROLES = {
+    USER: 'user',
+    ADMIN: 'admin'
+};
 
 const userSchema = new mongoose.Schema(
     {
@@ -26,6 +30,23 @@ const userSchema = new mongoose.Schema(
         minlength: [6, "Password Must contain Atleast 6 Characters"],
         select: false
     },
+
+    role: {
+        type: String,
+        enum: Object.values(ROLES),
+        default: ROLES.USER
+    },
+
+    lastActiveAt: {
+        type: Date,
+        default: Date.now
+    },
+
+    status: {
+        type: String,
+        enum: ["active", "suspended"],
+        default: "active"
+    },
     },
     {
        timestamps: true  
@@ -47,5 +68,7 @@ userSchema.methods.passwordCompare = async function (password) {
 };
 
 const userModel = mongoose.model('user',userSchema);
+mongoose.model('users', userSchema); // Register alias to resolve populate references to plural 'users'
+userModel.ROLES = ROLES;
 
 module.exports = userModel;

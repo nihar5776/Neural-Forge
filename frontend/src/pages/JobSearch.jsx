@@ -5,10 +5,12 @@ import { Search, MapPin, Briefcase, ExternalLink, RefreshCw, AlertCircle, Sparkl
 
 export default function JobSearch() {
   const [jobRole, setJobRole] = useState('');
+  const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [jobsList, setJobsList] = useState([]);
   const [searchedRole, setSearchedRole] = useState('');
+  const [searchedLocation, setSearchedLocation] = useState('');
 
   // States for automated recommendations
   const [recommendedJobs, setRecommendedJobs] = useState([]);
@@ -60,10 +62,11 @@ export default function JobSearch() {
     setError('');
     setJobsList([]);
     setSearchedRole(jobRole);
+    setSearchedLocation(location);
 
     try {
       // Endpoint is POST /api/jobs/search
-      const data = await api.post('/api/jobs/search', { jobRole });
+      const data = await api.post('/api/jobs/search', { jobRole, location });
       setJobsList(data.response?.jobs || []);
     } catch (err) {
       console.error('Job search failed:', err);
@@ -97,10 +100,19 @@ export default function JobSearch() {
             <Search className="search-icon" size={20} />
             <input
               type="text"
-              placeholder="Enter job role (e.g. Node.js Developer, React Engineer, Product Manager)..."
+              placeholder="Enter job role (e.g. Node.js Developer, React Engineer)..."
               value={jobRole}
               onChange={(e) => setJobRole(e.target.value)}
               required
+            />
+          </div>
+          <div className="location-input-wrapper">
+            <MapPin className="location-icon" size={20} />
+            <input
+              type="text"
+              placeholder="Location (e.g. India, Remote, London)..."
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
             />
           </div>
           <button type="submit" className="btn-primary search-submit-btn" disabled={loading || !jobRole.trim()}>
@@ -131,7 +143,7 @@ export default function JobSearch() {
             </div>
             <h2>AI Agent is Searching Opportunities...</h2>
             <p className="job-agent-searching-hint">
-              Querying live index. Web-scraping public channels on LinkedIn and Unstop matching "{searchedRole}".
+              Querying live index. Web-scraping public channels on LinkedIn and Shine matching "{searchedRole}" {searchedLocation && `in "${searchedLocation}"`}.
             </p>
             <div className="search-status-bar">
               <div className="status-progress-track">
@@ -143,7 +155,7 @@ export default function JobSearch() {
       ) : jobsList.length > 0 ? (
         <div className="results-container animate-fade-in search-results-box">
           <div className="results-info-row">
-            <h3>Search Results for "{searchedRole}"</h3>
+            <h3>Search Results for "{searchedRole}" {searchedLocation && `in "${searchedLocation}"`}</h3>
             <span className="results-count-badge">{jobsList.length} opportunities</span>
           </div>
 
@@ -187,7 +199,7 @@ export default function JobSearch() {
         <div className="empty-state-card card animate-fade-in search-results-box">
           <Briefcase size={48} className="empty-icon" />
           <h4>No live listings found</h4>
-          <p>The agent could not find active roles matching "{searchedRole}" right now. Try adjusting your search keywords (e.g. "Software Engineer" instead of a highly specific stack).</p>
+          <p>The agent could not find active roles matching "{searchedRole}" {searchedLocation && `in "${searchedLocation}"`} right now. Try adjusting your search keywords (e.g. "Software Engineer" instead of a highly specific stack).</p>
         </div>
       ) : null}
 

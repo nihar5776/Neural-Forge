@@ -78,129 +78,212 @@ function cleanContentForStableModel(content) {
   return content;
 }
 
+const { logAiRequest } = require("./aiLogger");
+
 /**
  * Text chat completion (returns JSON parsed object)
  */
-async function chatCompletion({ messages, systemInstruction }) {
-  if (isGroqEnabled()) {
-    return await runWithRetry(async () => {
-      console.log("Routing text completion to Groq (Llama 3.1)...");
-      const groqMessages = [];
-      if (systemInstruction) {
-        groqMessages.push({ role: "system", content: systemInstruction });
-      }
-      groqMessages.push(...messages);
+async function chatCompletion({ messages, systemInstruction, userId = null, feature = "Mock Interview" }) {
+  const startTime = Date.now();
+  const isGroq = isGroqEnabled();
+  const provider = isGroq ? "Groq" : "Gemini";
+  let finalModelUsed = isGroq ? "llama-3.3-70b-versatile" : "gemini-3-flash-preview";
+  let usage = { inputTokens: 0, outputTokens: 0 };
 
-      const response = await axios.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          model: "llama-3.3-70b-versatile",
-          messages: groqMessages,
-          response_format: { type: "json_object" }
-        },
-        {
-          headers: {
-            "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-            "Content-Type": "application/json"
+  try {
+    let result;
+    if (isGroq) {
+      result = await runWithRetry(async () => {
+        console.log("Routing text completion to Groq (Llama 3.1)...");
+        const groqMessages = [];
+        if (systemInstruction) {
+          groqMessages.push({ role: "system", content: systemInstruction });
+        }
+        groqMessages.push(...messages);
+
+        const response = await axios.post(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            model: "llama-3.3-70b-versatile",
+            messages: groqMessages,
+            response_format: { type: "json_object" }
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+              "Content-Type": "application/json"
+            }
           }
+        );
+
+        if (response.data.usage) {
+          usage.inputTokens = response.data.usage.prompt_tokens || 0;
+          usage.outputTokens = response.data.usage.completion_tokens || 0;
         }
-      );
 
-      const contentText = response.data.choices[0].message.content;
-      return JSON.parse(contentText);
-    });
-  } else {
-    // Route to Gemini
-    const geminiMessages = messages.map(m => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }]
-    }));
-
-    const makeGeminiCall = async (targetModel) => {
-      const cleanMessages = targetModel === "gemini-2.5-flash"
-        ? geminiMessages.map(m => cleanContentForStableModel(m))
-        : geminiMessages;
-
-      const response = await ai.models.generateContent({
-        model: targetModel,
-        contents: cleanMessages,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json"
-        }
+        const contentText = response.data.choices[0].message.content;
+        return JSON.parse(contentText);
       });
-      return JSON.parse(response.text);
-    };
+    } else {
+      // Route to Gemini
+      const geminiMessages = messages.map(m => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }]
+      }));
 
-    const preferredModel = useGeminiFallbackDirectly ? "gemini-2.5-flash" : "gemini-3-flash-preview";
+      const makeGeminiCall = async (targetModel) => {
+        finalModelUsed = targetModel;
+        const cleanMessages = targetModel === "gemini-2.5-flash"
+          ? geminiMessages.map(m => cleanContentForStableModel(m))
+          : geminiMessages;
 
-    try {
-      return await runWithRetry(() => makeGeminiCall(preferredModel));
-    } catch (error) {
-      if (preferredModel !== "gemini-2.5-flash") {
-        console.warn(`Gemini primary model failed, falling back to gemini-2.5-flash. Error: ${error.message}`);
-        try {
-          return await runWithRetry(() => makeGeminiCall("gemini-2.5-flash"));
-        } catch (fallbackError) {
-          console.error("Gemini fallback model also failed:", fallbackError);
-          throw fallbackError;
+        const response = await ai.models.generateContent({
+          model: targetModel,
+          contents: cleanMessages,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json"
+          }
+        });
+
+        if (response.usageMetadata) {
+          usage.inputTokens = response.usageMetadata.promptTokenCount || 0;
+          usage.outputTokens = response.usageMetadata.candidatesTokenCount || 0;
+        }
+
+        return JSON.parse(response.text);
+      };
+
+      const preferredModel = useGeminiFallbackDirectly ? "gemini-2.5-flash" : "gemini-3-flash-preview";
+
+      try {
+        result = await runWithRetry(() => makeGeminiCall(preferredModel));
+      } catch (error) {
+        if (preferredModel !== "gemini-2.5-flash") {
+          console.warn(`Gemini primary model failed, falling back to gemini-2.5-flash. Error: ${error.message}`);
+          try {
+            result = await runWithRetry(() => makeGeminiCall("gemini-2.5-flash"));
+          } catch (fallbackError) {
+            console.error("Gemini fallback model also failed:", fallbackError);
+            throw fallbackError;
+          }
+        } else {
+          throw error;
         }
       }
-      throw error;
     }
+
+    const latencyMs = Date.now() - startTime;
+    logAiRequest({
+      provider,
+      model: finalModelUsed,
+      user: userId,
+      feature,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      latencyMs,
+      success: true
+    });
+
+    return result;
+  } catch (error) {
+    const latencyMs = Date.now() - startTime;
+    logAiRequest({
+      provider,
+      model: finalModelUsed,
+      user: userId,
+      feature,
+      latencyMs,
+      success: false,
+      errorMessage: error.message
+    });
+    throw error;
   }
 }
 
 /**
  * Transcribe spoken audio file buffer into text
  */
-async function transcribeAudio(fileBuffer, mimeType) {
-  if (isGroqEnabled()) {
-    return await runWithRetry(async () => {
-      console.log("Routing audio transcription to Groq Whisper...");
-      const formData = new FormData();
-      const blob = new Blob([fileBuffer], { type: mimeType });
-      formData.append("file", blob, "audio.webm");
-      formData.append("model", "whisper-large-v3");
+async function transcribeAudio(fileBuffer, mimeType, userId = null, feature = "Audio Transcription") {
+  const startTime = Date.now();
+  const isGroq = isGroqEnabled();
+  const provider = isGroq ? "Groq" : "Gemini";
+  let finalModelUsed = isGroq ? "whisper-large-v3" : "gemini-3-flash-preview";
 
-      const response = await axios.post(
-        "https://api.groq.com/openai/v1/audio/transcriptions",
-        formData,
-        {
-          headers: {
-            "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
-          }
-        }
-      );
-      return response.data.text;
-    });
-  } else {
-    // Transcribe with Gemini
-    return await runWithRetry(async () => {
-      console.log("Routing audio transcription to Gemini Multimodal...");
-      const targetModel = useGeminiFallbackDirectly ? "gemini-2.5-flash" : "gemini-3-flash-preview";
-      
-      const response = await ai.models.generateContent({
-        model: targetModel,
-        contents: [
+  try {
+    let result;
+    if (isGroq) {
+      result = await runWithRetry(async () => {
+        console.log("Routing audio transcription to Groq Whisper...");
+        const formData = new FormData();
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        formData.append("file", blob, "audio.webm");
+        formData.append("model", "whisper-large-v3");
+
+        const response = await axios.post(
+          "https://api.groq.com/openai/v1/audio/transcriptions",
+          formData,
           {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: fileBuffer.toString("base64")
-                }
-              },
-              {
-                text: "Accurately transcribe the speech in this audio file. Return ONLY the transcribed text. Do not add any feedback, descriptions, or additional comments."
-              }
-            ]
+            headers: {
+              "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+            }
           }
-        ]
+        );
+        return response.data.text;
       });
-      return response.text;
+    } else {
+      // Route to Gemini
+      result = await runWithRetry(async () => {
+        console.log("Routing audio transcription to Gemini Multimodal...");
+        const targetModel = useGeminiFallbackDirectly ? "gemini-2.5-flash" : "gemini-3-flash-preview";
+        finalModelUsed = targetModel;
+        
+        const response = await ai.models.generateContent({
+          model: targetModel,
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: fileBuffer.toString("base64")
+                  }
+                },
+                {
+                  text: "Accurately transcribe the speech in this audio file. Return ONLY the transcribed text. Do not add any feedback, descriptions, or additional comments."
+                }
+              ]
+            }
+          ]
+        });
+        return response.text;
+      });
+    }
+
+    const latencyMs = Date.now() - startTime;
+    logAiRequest({
+      provider,
+      model: finalModelUsed,
+      user: userId,
+      feature,
+      latencyMs,
+      success: true
     });
+
+    return result;
+  } catch (error) {
+    const latencyMs = Date.now() - startTime;
+    logAiRequest({
+      provider,
+      model: finalModelUsed,
+      user: userId,
+      feature,
+      latencyMs,
+      success: false,
+      errorMessage: error.message
+    });
+    throw error;
   }
 }
 

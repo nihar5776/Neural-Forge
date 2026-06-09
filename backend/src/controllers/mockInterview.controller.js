@@ -42,7 +42,8 @@ async function startInterview(req, res) {
     const plannerResult = await runPlannerAgent({
       jobRole,
       resumeText,
-      difficulty
+      difficulty,
+      userId
     });
 
     console.log("[Conversational Flow] Planner finished. Focus areas:", plannerResult.focusAreas);
@@ -53,7 +54,8 @@ async function startInterview(req, res) {
       difficulty: plannerResult.interviewDifficulty,
       extractedDetails: plannerResult.extractedDetails,
       focusAreas: plannerResult.focusAreas,
-      previousQuestions: [] // Empty history for Q1
+      previousQuestions: [], // Empty history for Q1
+      userId
     });
 
     console.log("[Conversational Flow] Generated Question 1:", firstQuestion.question);
@@ -145,7 +147,8 @@ async function submitAnswer(req, res) {
       category: questionObj.category,
       userAnswer: answerType === "text" ? userAnswer : "",
       difficulty: session.difficulty,
-      audioFile: answerType === "audio" ? req.file : null
+      audioFile: answerType === "audio" ? req.file : null,
+      userId
     });
 
     console.log(`[Conversational Flow] Grade: ${evaluation.score}. Spoken userAnswer: "${evaluation.userAnswer}"`);
@@ -190,7 +193,8 @@ async function submitAnswer(req, res) {
       difficulty: session.difficulty,
       extractedDetails: session.extractedDetails,
       focusAreas: session.focusAreas,
-      previousQuestions
+      previousQuestions,
+      userId
     });
 
     console.log(`[Conversational Flow] Dynamic Question ${qIdx + 2} ready: "${nextQObj.question}"`);
@@ -271,7 +275,8 @@ async function finishInterview(req, res) {
     const report = await runFeedbackAgent({
       jobRole: session.jobRole,
       difficulty: session.difficulty,
-      questionsTranscript: transcript
+      questionsTranscript: transcript,
+      userId
     });
 
     console.log("[Conversational Flow] Final report ready. Overall:", report.overallScore);

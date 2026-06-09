@@ -6,6 +6,14 @@ async function request(endpoint, options = {}) {
   // Set credentials to 'include' for cookie support
   options.credentials = 'include';
   
+  const token = sessionStorage.getItem('token');
+  if (token) {
+    options.headers = {
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    };
+  }
+  
   if (options.body && !(options.body instanceof FormData)) {
     options.headers = {
       'Content-Type': 'application/json',

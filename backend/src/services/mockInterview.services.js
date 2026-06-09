@@ -40,7 +40,7 @@ const finalFeedbackSchema = z.object({
  * 1. Planner Agent
  * Determines job role, resume availability, interview difficulty, and extracts details.
  */
-async function runPlannerAgent({ jobRole, resumeText = '', difficulty }) {
+async function runPlannerAgent({ jobRole, resumeText = '', difficulty, userId = null }) {
   try {
     const prompt = `
 You are the Planner Agent of a Mock Interview system.
@@ -75,7 +75,9 @@ Return ONLY valid JSON matching this schema:
 
     const response = await aiClient.chatCompletion({
       messages: [{ role: "user", content: prompt }],
-      systemInstruction: "You are the Planner Agent of a Mock Interview system."
+      systemInstruction: "You are the Planner Agent of a Mock Interview system.",
+      userId,
+      feature: "Mock Interview Planner"
     });
 
     return plannerResponseSchema.parse(response);
@@ -89,7 +91,7 @@ Return ONLY valid JSON matching this schema:
  * 2. Interview Agent (Dynamic / Sequential)
  * Generates the NEXT question dynamically based on interview progress and history.
  */
-async function runInterviewAgent({ jobRole, difficulty, extractedDetails, focusAreas, previousQuestions = [] }) {
+async function runInterviewAgent({ jobRole, difficulty, extractedDetails, focusAreas, previousQuestions = [], userId = null }) {
   try {
     const nextQuestionIndex = previousQuestions.length + 1;
 
@@ -147,7 +149,9 @@ Return ONLY valid JSON matching this schema:
 
     const response = await aiClient.chatCompletion({
       messages: [{ role: "user", content: prompt }],
-      systemInstruction: "You are the Interview Agent of a Mock Interview system."
+      systemInstruction: "You are the Interview Agent of a Mock Interview system.",
+      userId,
+      feature: "Mock Interview Question Generation"
     });
 
     return singleQuestionSchema.parse(response);
@@ -161,7 +165,7 @@ Return ONLY valid JSON matching this schema:
  * 3. Evaluator Agent
  * Transcribes voice answer (if audio uploaded) and evaluates the text against the question.
  */
-async function runEvaluatorAgent({ question, category, userAnswer = '', difficulty, audioFile = null }) {
+async function runEvaluatorAgent({ question, category, userAnswer = '', difficulty, audioFile = null, userId = null }) {
   try {
     let finalAnswer = userAnswer;
 
@@ -169,7 +173,7 @@ async function runEvaluatorAgent({ question, category, userAnswer = '', difficul
     if (audioFile && audioFile.buffer) {
       console.log("Transcribing audio answer via speech client...");
       try {
-        const transcript = await aiClient.transcribeAudio(audioFile.buffer, audioFile.mimetype);
+        const transcript = await aiClient.transcribeAudio(audioFile.buffer, audioFile.mimetype, userId, "Mock Interview Answer Audio Transcription");
         console.log(`Transcribed text: "${transcript}"`);
         finalAnswer = transcript || "No audible speech detected.";
       } catch (transcribeError) {
@@ -203,7 +207,9 @@ Return ONLY valid JSON matching this schema:
 
     const response = await aiClient.chatCompletion({
       messages: [{ role: "user", content: prompt }],
-      systemInstruction: "You are the Evaluator Agent of a Mock Interview system."
+      systemInstruction: "You are the Evaluator Agent of a Mock Interview system.",
+      userId,
+      feature: "Mock Interview Evaluator"
     });
 
     const validated = evaluationSchema.parse(response);
@@ -224,7 +230,7 @@ Return ONLY valid JSON matching this schema:
  * 4. Feedback Agent
  * Consolidates all questions, answers, and evaluations into a final performance report.
  */
-async function runFeedbackAgent({ jobRole, difficulty, questionsTranscript }) {
+async function runFeedbackAgent({ jobRole, difficulty, questionsTranscript, userId = null }) {
   try {
     const prompt = `
 You are the Feedback Agent.
@@ -259,7 +265,9 @@ Return ONLY valid JSON matching this schema:
 
     const response = await aiClient.chatCompletion({
       messages: [{ role: "user", content: prompt }],
-      systemInstruction: "You are the Feedback Agent of a Mock Interview system."
+      systemInstruction: "You are the Feedback Agent of a Mock Interview system.",
+      userId,
+      feature: "Mock Interview Feedback"
     });
 
     return finalFeedbackSchema.parse(response);

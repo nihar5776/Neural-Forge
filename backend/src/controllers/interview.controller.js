@@ -56,7 +56,8 @@ async function generateUserInterviewReport(req, res) {
       response = await aiService.generateInterviewReport({
         resume: resumeText,
         jobDescription: jobDescription || "General Profile Assessment",
-        selfDescription: selfDescription || ""
+        selfDescription: selfDescription || "",
+        userId
       });
     } catch (aiError) {
       console.error("AI Generation Error:", aiError);

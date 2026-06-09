@@ -27,12 +27,14 @@ async function generateQuizHandler(req, res) {
       });
     }
 
+    const userId = req.user ? (req.user.userId || req.user.id) : null;
     const quiz = await aiService.generateQuizAgentically({
       mode,
       skills,
       jobTitle,
       numQuestions: Number(numQuestions) || 5,
-      difficulty: difficulty || 'Medium'
+      difficulty: difficulty || 'Medium',
+      userId
     });
 
     res.status(200).json({

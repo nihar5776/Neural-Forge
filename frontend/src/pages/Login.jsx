@@ -63,6 +63,9 @@ export default function Login({ onLoginSuccess }) {
 
     try {
       const data = await api.post('/api/auth/login', { email, password });
+      if (data.token) {
+        sessionStorage.setItem('token', data.token);
+      }
       onLoginSuccess(data.user);
       navigate('/');
     } catch (err) {

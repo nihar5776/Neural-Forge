@@ -45,7 +45,8 @@ async function tailorResume(req, res) {
     try {
       response = await aiService.generateTailoredResume({
         resumeText,
-        jobDescription
+        jobDescription,
+        userId
       });
     } catch (aiError) {
       console.error("AI Generation Error:", aiError);

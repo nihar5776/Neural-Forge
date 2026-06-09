@@ -12,6 +12,13 @@ import Quiz from './pages/Quiz';
 import MockInterview from './pages/MockInterview';
 import TailorResume from './pages/TailorResume';
 
+// Admin Views
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminHealth from './pages/admin/AdminHealth';
+import AdminExport from './pages/admin/AdminExport';
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -21,6 +28,12 @@ export default function App() {
   // Validate session on mount
   useEffect(() => {
     const checkAuth = async () => {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        setUser(null);
+        setAuthChecked(true);
+        return;
+      }
       try {
         const data = await api.get('/api/auth/get-me');
         if (data.user) {
@@ -29,6 +42,7 @@ export default function App() {
       } catch (err) {
         console.log('No active session / unauthorized.');
         setUser(null);
+        sessionStorage.removeItem('token');
       } finally {
         setAuthChecked(true);
       }
@@ -42,6 +56,7 @@ export default function App() {
 
   const handleLogoutSuccess = () => {
     setUser(null);
+    sessionStorage.removeItem('token');
   };
 
   if (!authChecked) {
@@ -72,13 +87,27 @@ export default function App() {
       <Sidebar user={user} onLogoutSuccess={handleLogoutSuccess} />
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/upload" element={<ResumeUpload />} />
-          <Route path="/jobs" element={<JobSearch />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/dashboard/mock-interview" element={<MockInterview />} />
-          <Route path="/tailor" element={<TailorResume />} />
+          {user?.role === 'admin' ? (
+            <>
+              <Route path="/" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers currentUser={user} />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/admin/health" element={<AdminHealth />} />
+              <Route path="/admin/export" element={<AdminExport />} />
+              <Route path="/profile" element={<Profile />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/upload" element={<ResumeUpload />} />
+              <Route path="/tailor" element={<TailorResume />} />
+              <Route path="/jobs" element={<JobSearch />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/quiz" element={<Quiz />} />
+              <Route path="/dashboard/mock-interview" element={<MockInterview />} />
+            </>
+          )}
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

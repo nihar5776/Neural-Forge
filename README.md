@@ -8,8 +8,9 @@
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75C2?style=for-the-badge&logo=googlegemini&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-F55036?style=for-the-badge&logo=groq&logoColor=white)
 
-An advanced, end-to-end **Agentic AI-powered career coach** designed to automate resume feedback, track professional skill gaps, generate custom timelines, run adaptive technical interview quizzes, and fetch matching job listings using an intelligent scraping loop.
+An advanced, end-to-end **Agentic AI-powered career coach** designed to automate resume feedback, tailor resumes, track professional skill gaps, generate custom timelines, run adaptive technical interview quizzes, support real-time voice conversational mock interviews, and fetch matching job listings using an intelligent scraping loop.
 
 </div>
 
@@ -22,7 +23,7 @@ The diagram below details the data flow and integration between the Vite client,
 ```mermaid
 graph TD
     Client[React Client / Vite] -->|1. Uploads PDF or Selects Resume| Backend[Express Backend / Node.js]
-    Backend -->|2. Saves User / Resume / Quiz Results| Database[(MongoDB / Mongoose)]
+    Backend -->|2. Saves User / Resume / Quiz / Interview Results| Database[(MongoDB / Mongoose)]
     Backend -->|3. Feeds Raw Parsing + Settings| Gemini[Google Gemini AI / Zod Validation]
     Gemini -->|4. Tool Call Request| JobScraper[LinkedIn & Unstop Scraper Service]
     JobScraper -->|5. Scraped Opportunity Feeds| Gemini
@@ -38,13 +39,18 @@ graph TD
 * **In-Memory PDF Parser**: Converts PDF uploads into raw text structures instantly.
 * **Resume Manager Collection**: Users can drag-and-drop multiple resumes to their profile.
 * **Dropdown Selection**: Generated reports can target stored profile resumes, eliminating redundant uploads.
-* **Resume Maintenance**: Full dashboard to view upload histories and delete files dynamically.
+* **Resume Maintenance**: Full dashboard to view upload histories, rename resumes, and delete files dynamically.
 
 ### 🎯 AI Coaching Reports & Prep Roadmaps
 * **Intelligent Match Score**: Instant alignment metrics (0-100%) against target job descriptions.
-* **Mock Interviews**: Returns 5-7 technical questions and 3-5 behavioral questions matching candidate-intent and answers.
+* **Mock Questions**: Returns 5-7 technical questions and 3-5 behavioral questions matching candidate-intent and answers.
 * **Adaptive Timelines**: Dynamic preparation timelines that scale from 7 up to 30+ days based on skill gaps.
 * **Learning Badges**: Clickable video resources (🎥 YouTube) and official reference pages (📄 documentation).
+
+### ✂️ AI Resume Tailoring & Enhancer
+* **Job Description Alignment**: Matches resume content against job descriptions, identifying key matches and highlights.
+* **Tailored Resume Generation**: Generates refined markdown copies of professional experiences and qualifications.
+* **Interactive Editing & Saving**: Users can edit generated resumes in the UI and save them directly back to their resume portfolio.
 
 ### 🧠 Adaptive Interview Prep Quizzes
 * **Hybrid Scope Selectors**: Launch quizzes targeting either job description history or identified skill gaps.
@@ -53,9 +59,22 @@ graph TD
 * **Detailed AI Explanations**: Explains the correct answer logic with Gemini-backed explanations.
 * **Performance Tracker**: Score logging and past quiz history persisted in MongoDB.
 
+### 🎙️ Conversational Mock Interviews
+* **Multi-Agent Orchestration**: Plan, interview, evaluate, and deliver comprehensive feedback via four dedicated AI agents.
+* **Voice and Audio Integration**: Supports voice answers via audio upload, dynamically transcribing and scoring responses.
+* **Adaptive Difficulty Scaling**: Real-time updates adjusting difficulty (Easy/Medium/Hard) based on cumulative performance grades.
+* **Detailed Dashboard Reports**: Summarizes performance, overall/technical/communication scores, strengths, weaknesses, and key tips.
+
 ### 💼 Agentic Job Discovery
 * **Scraper Tool Loops**: Uses Gemini function declarations to search LinkedIn and Unstop.
 * **AI Relevance Filter**: Discards unrelated profiles and filters jobs matching the search query.
+
+### 🛡️ Admin Portal Telemetry & Control
+* **Admin Overview Dashboard**: Dynamic line chart of daily activity trends (parallel aggregation) and AI model distribution.
+* **User Management System**: Admin controls to suspend, activate, inspect details, or delete users (cascade deletion).
+* **AI Analytics Cost Auditor**: Real-time calculations of latency, success rates, token weights, and estimated billing.
+* **System Health Diagnostics**: Rolling 24h uptime SLAs, memory usage gauges, and database admin ping heartbeats.
+* **Low-Memory Export Streams**: Streams large reports in CSV, XLSX workbook chunks, or formatted PDFs.
 
 ---
 
@@ -65,20 +84,33 @@ graph TD
 ├── backend/
 │   ├── config/              # MongoDB ODM connections
 │   ├── src/
-│   │   ├── controllers/     # Authentication, reports, resumes, and quiz logic
-│   │   ├── middlewares/     # JWT authentication guards and multer file handlers
+│   │   ├── controllers/     # Auth, reports, resumes, quiz, tailoring, mock interviews, admin control
+│   │   ├── middlewares/     # JWT authentication, role guards (isAdmin), multer upload
 │   │   ├── models/          # Mongoose database schemas
 │   │   ├── routes/          # Mounted endpoints
-│   │   └── services/        # Gemini AI integrations & scraper methods
+│   │   └── services/        # Gemini/Groq AI integrations, scraper methods, exports, health checks
 │   ├── index.js             # Middleware configurations & routes binding
 │   └── server.js            # Node HTTP server listener
 └── frontend/
     ├── src/
     │   ├── components/      # UI components (Sidebar, Report Details)
     │   ├── pages/           # Pages (Dashboard, Profile, Quiz, Search)
-    │   ├── utils/           # Client-side API fetch utilities
+    │   │   ├── Dashboard.jsx
+    │   │   ├── Profile.jsx
+    │   │   ├── ResumeUpload.jsx
+    │   │   ├── TailorResume.jsx   # AI Resume Tailoring Interface
+    │   │   ├── Quiz.jsx           # Adaptive MCQ Prep Quizzes
+    │   │   ├── MockInterview.jsx  # Voice Conversational Interview Board
+    │   │   ├── JobSearch.jsx
+    │   │   ├── Login.jsx / Register.jsx
+    │   │   └── admin/             # System Administration Dashboards:
+    │   │       ├── AdminDashboard.jsx
+    │   │       ├── AdminUsers.jsx
+    │   │       ├── AdminAnalytics.jsx
+    │   │       ├── AdminHealth.jsx
+    │   │       └── AdminExport.jsx
     │   ├── App.jsx          # Route configurations
-    │   ├── index.css        # Core design system stylesheet
+    │   ├── index.css        # Core custom HSL-based stylesheet
     │   └── main.jsx         # App bootstrap anchor
 ```
 
@@ -92,8 +124,11 @@ Create a file named `.env` in the `backend` directory:
 # MongoDB Connection URI (Local database or Atlas Cluster)
 mongo_uri=mongodb://localhost:27017/agentic-ai-resume
 
-# Google Gemini API credential
+# Google Gemini API credential (used for text processing & agent flows)
 GOOGLE_GEMINI_API_KEY=your_gemini_api_key_here
+
+# Groq API key (used for high-speed conversational mock interview agent loops)
+GROQ_API_KEY=your_groq_api_key_here
 
 # JWT Secret key for authentication token hashing
 jwt_secret=your_super_secret_jwt_key_here
@@ -138,16 +173,37 @@ npm run dev
 | **GET** | `/api/resumeUpload/` | Lists metadata of user's stored resumes | Yes |
 | **POST** | `/api/resumeUpload/` | Uploads and saves a new resume to profile | Yes |
 | **DELETE**| `/api/resumeUpload/:id` | Deletes a stored resume from database | Yes |
+| **PATCH** | `/api/resumeUpload/rename/:id` | Renames an existing stored resume file | Yes |
 | **POST** | `/api/quiz/generate` | Generates custom multiple-choice quiz questions | Yes |
 | **POST** | `/api/quiz/submit` | Grades and saves the completed quiz score | Yes |
 | **GET** | `/api/quiz/history` | Retrieves the history of completed quizzes | Yes |
 | **POST** | `/api/jobs/search` | Scrapes public search opportunities agentically | Yes |
+| **POST** | `/api/tailor/` | Generates a tailored resume alignment against a job description | Yes |
+| **POST** | `/api/tailor/save` | Saves edited tailored resume back to profile resumes list | Yes |
+| **POST** | `/api/mock-interview/start` | Initializes a conversational mock interview and generates Q1 | Yes |
+| **POST** | `/api/mock-interview/:id/answer` | Evaluates question response (text/audio) and returns next question | Yes |
+| **POST** | `/api/mock-interview/:id/finish` | Compiles session transcript and outputs final evaluation report | Yes |
+| **GET** | `/api/mock-interview/history` | Fetches history of completed conversational mock interviews | Yes |
+| **GET** | `/api/mock-interview/:id` | Retrieves full details of a specific interview session | Yes |
+| **GET** | `/api/admin/stats` | Fetches overall telemetry statistics & daily engagement trend | Yes (Admin) |
+| **GET** | `/api/admin/analytics` | Fetches aggregated AI request counts, success rate, and costs | Yes (Admin) |
+| **GET** | `/api/admin/users` | Retrieves paginated search results of registered user accounts | Yes (Admin) |
+| **GET** | `/api/admin/users/:id` | Retrieves detailed information for a specific user profile | Yes (Admin) |
+| **PATCH** | `/api/admin/users/:id/suspend` | Suspends user profile (locks session) | Yes (Admin) |
+| **PATCH** | `/api/admin/users/:id/activate` | Re-activates a suspended user profile | Yes (Admin) |
+| **DELETE**| `/api/admin/users/:id` | Cascades delete user and all resumes/reports/logs | Yes (Admin) |
+| **GET** | `/api/admin/health` | Performs live health diagnostics and pulls uptime SLAs | Yes (Admin) |
+| **GET** | `/api/health` | Public health diagnostics ping | No |
+| **GET** | `/api/admin/export/users` | Streams registered users table as CSV, Excel, or PDF | Yes (Admin) |
+| **GET** | `/api/admin/export/ats` | Streams resume matching reports as CSV, Excel, or PDF | Yes (Admin) |
+| **GET** | `/api/admin/export/interviews` | Streams mock interview lists as CSV, Excel, or PDF | Yes (Admin) |
+| **GET** | `/api/admin/export/analytics` | Streams AI request telemetry as CSV, Excel, or PDF | Yes (Admin) |
 
 ---
 
 ## 🔄 Detailed Feature & API Workflows
 
-This section details the step-by-step execution flow for every application feature and API request, complete with interactive Mermaid diagrams mapping frontend triggers directly to backend controllers, MongoDB schemas, and the Google Gemini AI Agent loop.
+This section details the step-by-step execution flow for every application feature and API request, complete with interactive Mermaid diagrams mapping frontend triggers directly to backend controllers, MongoDB schemas, and the Google Gemini/Groq AI loops.
 
 ### 🔑 1. User Authentication Flow
 Handles registering accounts, logging in, managing browser cookies/session validation, and handling secure sign-out.
@@ -205,7 +261,7 @@ graph TD
     AuthGuard -->|Invalid or Blacklisted| GetMeFail["Return 401: Unauthorized"]:::server
     AuthGuard -->|Valid| FetchUser["Fetch User details by ID"]:::db
     FetchUser --> GetMeSuccess["Return 200: User Details"]:::server
-
+ 
     %% Logout
     Route -->|Logout| LogoutPost["POST /api/auth/logout"]:::server
     LogoutPost --> ClearCookie["Clear token Cookie from browser"]:::server
@@ -231,13 +287,16 @@ Users can upload, persist, view, and delete multiple resumes in their profile pa
    * React client posts a multipart `FormData` object containing the `.pdf` file to `POST /api/resumeUpload/`.
    * Multer intercepts the file buffer in memory.
    * `pdf-parse` extracts raw text from the parsed buffer immediately.
-   * A document containing the filename, parsed text contents, and associated `userId` is saved in the `Resume` collection via [resumeModel.create()](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/resumeUpload.controller.js#L34).
+   * A document containing the filename, parsed text contents, and associated `userId` is saved in the `Resume` collection via [resumeUpload()](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/resumeUpload.controller.js#L26).
 2. **List Resumes**:
    * React client fetches saved resumes using `GET /api/resumeUpload/`.
    * Backend queries MongoDB matching `userId` and projects `-resume` to exclude the heavy parsed text field, ensuring fast payloads.
-3. **Delete**:
+3. **Rename Resume**:
+   * React client requests `PATCH /api/resumeUpload/rename/:id` containing `newName`.
+   * Backend updates the filename of the matching resume owned by the active user.
+4. **Delete**:
    * Client calls `DELETE /api/resumeUpload/:id`.
-   * Backend performs a secure delete check ([resumeModel.findOneAndDelete](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/resumeUpload.controller.js#L77)) validating both the `_id` and owner `user` fields match the request context.
+   * Backend performs a secure delete check ([deleteUserResume](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/resumeUpload.controller.js#L77)) validating both the `_id` and owner `user` fields match the request context.
 
 ```mermaid
 graph TD
@@ -261,13 +320,18 @@ graph TD
     FindResumes --> SelectExclusion["Exclude heavy 'resume' text field from projection"]:::db
     SelectExclusion --> ListSuccess["Return 200: Sorted Resumes List metadata"]:::server
 
+    %% Rename Resume
+    ActionRoute -->|Rename Resume| RenamePatch["PATCH /api/resumeUpload/rename/:id"]:::server
+    RenamePatch --> FindRename["Update filename in DB for matching resume & userId"]:::db
+    FindRename --> RenameSuccess["Return 200: Rename Successful"]:::server
+
     %% Delete Resume
     ActionRoute -->|Delete Resume| DeleteReq["DELETE /api/resumeUpload/:id"]:::server
     DeleteReq --> FindDelete["Find & Delete Resume matching resumeId and userId"]:::db
     FindDelete -->|Not Found| DeleteFail["Return 404: Not found or Unauthorized"]:::server
     FindDelete -->|Found| DeleteSuccess["Return 200: Resume Deleted successfully"]:::server
 
-    class Start,UploadSuccess,ListSuccess,DeleteFail,DeleteSuccess client;
+    class Start,UploadSuccess,ListSuccess,RenameSuccess,DeleteFail,DeleteSuccess client;
 ```
 
 ---
@@ -450,4 +514,219 @@ graph TD
     class Start,DisplayJobs client;
 ```
 
+---
 
+### 🛡️ 6. Admin Management & Access Control Flow
+Allows administrators to inspect system registrations, activate/suspend user access, and cascade-delete profiles securely.
+
+#### 🛠️ Files Involved:
+* **Routes**: [userManagement.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/userManagement.routes.js)
+* **Controller**: [userManagement.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/userManagement.controller.js)
+* **Service**: [userManagement.service.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/services/userManagement.service.js)
+* **Auth Middleware**: [auth.middleware.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/middlewares/auth.middleware.js) (`isAdmin` role guard)
+
+#### 📝 Step-by-Step Flow:
+1. **Admin Authorization Check**:
+   * The `authUser` middleware decodes the JWT token.
+   * The `isAdmin` middleware loads the user from the database and checks if `user.role === 'admin'`. If not, it rejects the request with a 403 Forbidden.
+2. **List & Search**:
+   * Admin opens `/admin/users` which calls `GET /api/admin/users?page=1&limit=10&search=john`.
+   * `getUsers()` matches name/email case-insensitively, applies limits/skip values, and counts matches concurrently.
+3. **Suspend/Activate**:
+   * Admin triggers status toggles, requesting `PATCH /api/admin/users/:id/suspend` or `/activate`.
+   * The controller prevents self-suspension by checking if the target ID matches the logged-in admin ID.
+   * Status is updated to `suspended` or `active` in the collection.
+4. **Cascade Delete**:
+   * Admin calls `DELETE /api/admin/users/:id`.
+   * The controller enforces a safety guard preventing admin self-deletion.
+   * On validation, user is permanently deleted along with parallel deletions for all associated Resumes, Interview Reports, Mock Interviews, Quizzes, and Job Searches.
+
+```mermaid
+graph TD
+    classDef client fill:#3b82f6,stroke:#1d4ed8,color:#fff,font-weight:bold;
+    classDef server fill:#10b981,stroke:#047857,color:#fff,font-weight:bold;
+    classDef db fill:#f59e0b,stroke:#b45309,color:#fff,font-weight:bold;
+    
+    Start["Admin Actions: Manage Users List"] --> Route{Select Action}
+    
+    %% List
+    Route -->|List / Search| ListReq["GET /api/admin/users"]:::server
+    ListReq --> AuthGuard["authMiddleware.authUser & authMiddleware.isAdmin"]:::server
+    AuthGuard --> QueryUsers["Query DB with pagination limits & regex search"]:::db
+    QueryUsers --> ReturnList["Return 200: Paginated users array + metadata"]:::server
+    
+    %% Suspend
+    Route -->|Suspend User| SuspendReq["PATCH /api/admin/users/:id/suspend"]:::server
+    SuspendReq --> CheckSelfSus["Check if target ID == admin ID"]:::server
+    CheckSelfSus -->|Self| RejectSus["Return 400: Cannot suspend yourself"]:::server
+    CheckSelfSus -->|Valid| UpdateSus["Update status to 'suspended' in DB"]:::db
+    UpdateSus --> SusSuccess["Return 200: Account Suspended"]:::server
+    
+    %% Cascade Delete
+    Route -->|Delete User| DeleteReq["DELETE /api/admin/users/:id"]:::server
+    DeleteReq --> CheckSelfDel["Check if target ID == admin ID"]:::server
+    CheckSelfDel -->|Self| RejectDel["Return 400: Cannot delete yourself"]:::server
+    CheckSelfDel -->|Valid| DbDel["Delete user account from DB"]:::db
+    DbDel --> CascadeClean["Parallel cleanup: Delete associated Resumes, Reports, Quizzes, Interviews"]:::db
+    CascadeClean --> DelSuccess["Return 200: User and all data deleted"]:::server
+
+    class Start,ReturnList,RejectSus,SusSuccess,RejectDel,DelSuccess client;
+```
+
+---
+
+### 📊 7. Telemetry Monitoring & Streaming Exports Flow
+Calculates parallel stats aggregates, performs heartbeat health check chronologies, and streams massive log exports with low memory footprints.
+
+#### 🛠️ Files Involved:
+* **Routes**: [systemHealth.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/systemHealth.routes.js), [export.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/export.routes.js), [dashboard.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/dashboard.routes.js), [aiAnalytics.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/aiAnalytics.routes.js)
+* **Controller**: [systemHealth.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/systemHealth.controller.js), [export.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/export.controller.js), [dashboard.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/dashboard.controller.js), [aiAnalytics.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/aiAnalytics.controller.js)
+* **Service**: [systemHealth.service.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/services/systemHealth.service.js), [export.service.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/services/export.service.js), [dashboard.service.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/services/dashboard.service.js), [aiAnalytics.service.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/services/aiAnalytics.service.js)
+
+#### 📝 Step-by-Step Flow:
+1. **Parallel Aggregation**:
+   * `GET /api/admin/stats` triggers `getDashboardStats()`. It runs concurrent aggregates on 5 models to fetch counts, scores, and weekly growth alongside the last 7 days of daily activity.
+2. **Uptime SLA Heartbeats**:
+   * A background diagnostic chronometer polls express server latency, database pings, and external model key endpoints.
+   * Logs are persisted in the `SystemHealth` collection with a 7-day TTL expiration, calculating rolling uptime SLAs.
+3. **Low-Memory Export Streams**:
+   * Admin requests file downloads via `/api/admin/export/:module?format=csv|xlsx|pdf`.
+   * **CSV Mode**: Uses a Mongoose cursor to pipe and write matching records row-by-row directly to the Express output stream, maintaining a constant memory profile.
+   * **Excel Mode**: Initializes a streaming workbook writer (`ExcelJS.stream.xlsx.WorkbookWriter`) to pipe workbook parts dynamically.
+   * **PDF Mode**: Directs a `PDFKit` document stream, rendering professional summaries, metadata headers, and formatted tables page-by-page.
+
+```mermaid
+graph TD
+    classDef client fill:#3b82f6,stroke:#1d4ed8,color:#fff,font-weight:bold;
+    classDef server fill:#10b981,stroke:#047857,color:#fff,font-weight:bold;
+    classDef db fill:#f59e0b,stroke:#b45309,color:#fff,font-weight:bold;
+    
+    Start["Admin: Diagnostic Check OR Reports Export Request"] --> Route{Select API}
+    
+    %% Diagnostics
+    Route -->|Uptime Telemetry| HealthReq["GET /api/admin/health"]:::server
+    HealthReq --> PingCheck["Run pings: DB admin.ping, Gemini/Groq model API checks"]:::server
+    PingCheck --> LoadUptime["Calculate rollings SLAs from SystemHealth collection (7d TTL)"]:::db
+    LoadUptime --> HealthSuccess["Return 200: Live status check list"]:::server
+    
+    %% Streaming Exports
+    Route -->|Export Logs| ExportReq["GET /api/admin/export/:module?format=csv|xlsx|pdf"]:::server
+    ExportReq --> FormatBranch{Select Format}
+    
+    FormatBranch -->|CSV| CSVStream["Mongoose Cursor: stream & write rows to response stream"]:::server
+    FormatBranch -->|XLSX| XLSXStream["ExcelJS stream writer: pipe chunk rows to response stream"]:::server
+    FormatBranch -->|PDF| PDFStream["PDFKit stream: pipe document pages directly to client"]:::server
+    
+    CSVStream --> DownloadSuccess["Client completes download"]
+    XLSXStream --> DownloadSuccess
+    PDFStream --> DownloadSuccess
+
+    class Start,HealthSuccess,DownloadSuccess client;
+```
+
+---
+
+### ✂️ 8. AI Resume Tailoring Flow
+Analyzes the uploaded resume or stored resume and tailors it specifically to align with target job requirements, allowing users to tweak it and persist the tailored copy.
+
+#### 🛠️ Files Involved:
+* **Routes**: [tailor.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/tailor.routes.js)
+* **Controller**: [tailor.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/tailor.controller.js)
+* **AI Service**: [ai.services.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/services/ai.services.js) (`generateTailoredResume`)
+* **Model**: [resume.model.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/models/resume.model.js)
+
+#### 📝 Step-by-Step Flow:
+1. **Tailor Request**:
+   * Client posts the tailoring request to `POST /api/tailor/` with a target `jobDescription`.
+   * **Source Select Option**: If `resumeId` is present, the backend queries MongoDB for the resume text. Otherwise, a PDF file is uploaded via Multer, and `pdf-parse` extracts the text dynamically.
+2. **AI Resume Tailoring**:
+   * The backend forwards the details to `aiService.generateTailoredResume()`.
+   * Gemini analyzes the resume against the target description and structures a tailored copy (optimizing highlights, summary, experience, and project matches) alongside actionable suggestions.
+3. **Save Tailored Resume**:
+   * The client renders an editor. When the user saves the tailored resume, a `POST` request is sent to `/api/tailor/save` with the `editedData` (JSON) and custom `resumeName`.
+   * The backend persists it inside `resumeModel` with a `[Tailored] ` prefix.
+
+```mermaid
+graph TD
+    classDef client fill:#3b82f6,stroke:#1d4ed8,color:#fff,font-weight:bold;
+    classDef server fill:#10b981,stroke:#047857,color:#fff,font-weight:bold;
+    classDef db fill:#f59e0b,stroke:#b45309,color:#fff,font-weight:bold;
+    classDef ai fill:#8e75c2,stroke:#6b21a8,color:#fff,font-weight:bold;
+
+    Start["Client: Select/Upload Resume & Input Job Description"] --> Route{Action}
+    
+    %% Tailor
+    Route -->|Tailor Request| POST_Tailor["POST /api/tailor/"]:::server
+    POST_Tailor --> CheckSource{"has resumeId?"}:::server
+    CheckSource -->|Yes| FetchStored["Retrieve resume text from DB"]:::db
+    CheckSource -->|No| ParsePDF["pdf-parse: parse PDF upload buffer"]:::server
+    FetchStored --> CallAI["aiService.generateTailoredResume"]:::server
+    ParsePDF --> CallAI
+    CallAI --> Gemini["Gemini: Align skills & experiences to Job Description"]:::ai
+    Gemini --> ReturnTailored["Return 200: Tailored resume JSON & suggestions"]:::server
+    
+    %% Save
+    Route -->|Save Tailored| POST_Save["POST /api/tailor/save"]:::server
+    POST_Save --> SaveDB["Create new resumeModel document (JSON text string)"]:::db
+    SaveDB --> SaveSuccess["Return 201: Saved Tailored Resume to portfolio"]:::server
+
+    class Start,ReturnTailored,SaveSuccess client;
+```
+
+---
+
+### 🎙️ 9. Conversational Mock Interviews Flow
+Implements voice-capable conversational mock interviews using a sequential multi-agent architecture with adaptive difficulty scaling.
+
+#### 🛠️ Files Involved:
+* **Routes**: [mockInterview.routes.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/routes/mockInterview.routes.js)
+* **Controller**: [mockInterview.controller.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/controllers/mockInterview.controller.js)
+* **Agents Service**: [mockInterview.services.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/services/mockInterview.services.js) (`runPlannerAgent`, `runInterviewAgent`, `runEvaluatorAgent`, `runFeedbackAgent`)
+* **Model**: [mockInterview.model.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/models/mockInterview.model.js), [resume.model.js](file:///c:/Users/mibni/OneDrive/Desktop/GenAI-Resume/backend/src/models/resume.model.js)
+
+#### 📝 Step-by-Step Flow:
+1. **Initiate Session**:
+   * Client posts `jobRole`, optional `resumeId`, and `difficulty` to `POST /api/mock-interview/start`.
+   * **Planner Agent**: Parses the target role and resume to identify exactly 3 core technical focus areas.
+   * **Interview Agent**: Generates the first technical question targeting focal area 1.
+   * The backend saves a new `MockInterview` session document in MongoDB and returns the session details with Question 1.
+2. **Dynamic Q&A Loop**:
+   * The user answers the question. The response can be submitted as text or as a recorded audio file (captured in `multipart/form-data` under the `audio` name).
+   * **Evaluator Agent**: Evaluates the answer. If audio is uploaded, it transcribes the speech first. It scores the user (0-100), offers constructive feedback, and generates an ideal reference answer.
+   * **Adaptive Difficulty**: If the score is $\ge 80$, the session difficulty increments (e.g. Easy $\to$ Medium). If the score is $< 60$, it drops.
+   * **Interview Agent**: Generates the next question by analyzing the transcript history and focus areas.
+   * The backend updates the database and returns the evaluation and Question 2.
+3. **Session Finish & Report**:
+   * The user clicks "Finish Interview". Client sends a `POST` request to `/api/mock-interview/:id/finish`.
+   * **Feedback Agent**: Processes the entire interview history. It calculates overall performance scores, technical/communication grades, highlights strengths/weaknesses, lists lacking skills, and proposes study recommendations.
+   * The backend sets status to `"completed"` and persists the feedback report.
+
+```mermaid
+graph TD
+    classDef client fill:#3b82f6,stroke:#1d4ed8,color:#fff,font-weight:bold;
+    classDef server fill:#10b981,stroke:#047857,color:#fff,font-weight:bold;
+    classDef db fill:#f59e0b,stroke:#b45309,color:#fff,font-weight:bold;
+    classDef ai fill:#8e75c2,stroke:#6b21a8,color:#fff,font-weight:bold;
+
+    Start["Client: Select Job Role & Resume"] --> StartSession["POST /api/mock-interview/start"]:::server
+    StartSession --> PlannerAgent["Run Planner Agent: Extract details & 3 focus areas"]:::ai
+    PlannerAgent --> InterviewAgent1["Run Interview Agent: Generate Question 1"]:::ai
+    InterviewAgent1 --> CreateSession["Create mockInterviewModel document (status: initiated)"]:::db
+    CreateSession --> PlayUI["Client: Show dynamic Q&A voice dashboard"]
+    
+    %% Q&A Loop
+    PlayUI --> SubmitAnswer["POST /api/mock-interview/:id/answer"]:::server
+    SubmitAnswer --> EvaluatorAgent["Run Evaluator Agent: Transcribe audio/text & score (0-100)"]:::ai
+    EvaluatorAgent --> AdaptiveDifficulty["Scale difficulty dynamically based on score"]:::server
+    AdaptiveDifficulty --> InterviewAgent2["Run Interview Agent: Check history & generate next question"]:::ai
+    InterviewAgent2 --> UpdateSession["Append question & update session details in DB"]:::db
+    UpdateSession --> PlayUI
+    
+    %% Finish
+    PlayUI --> FinishSession["POST /api/mock-interview/:id/finish"]:::server
+    FinishSession --> FeedbackAgent["Run Feedback Agent: Compile score ring, strengths, weaknesses & guidelines"]:::ai
+    FeedbackAgent --> CompleteSession["Update DB status to completed with report details"]:::db
+    CompleteSession --> ShowReport["Client: Show final professional performance dashboard"]
+
+    class Start,PlayUI,ShowReport client;
+```

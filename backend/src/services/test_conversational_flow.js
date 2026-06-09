@@ -1,4 +1,4 @@
-require('dotenv').config({ path: 'c:/Users/SHILLENDRA/Desktop/Temp/backend/.env' });
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const mongoose = require('mongoose');
 const userModel = require('../models/user.models');
 const mockInterviewModel = require('../models/mockInterview.model');

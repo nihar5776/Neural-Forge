@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require("@google/genai");
 const { z } = require("zod");
+const { logAiRequest } = require("./aiLogger");
 
 
 console.log(
@@ -52,7 +53,8 @@ const interviewReportSchema = z.object({
 async function generateInterviewReport({
   resume,
   selfDescription,
-  jobDescription
+  jobDescription,
+  userId = null
 }) {
   try {
     const prompt = `
@@ -123,7 +125,9 @@ ${jobDescription}
       contents: prompt,
       config: {
         responseMimeType: "application/json"
-      }
+      },
+      userId,
+      feature: "Resume Analysis"
     });
 
     console.log("RAW RESPONSE:");
@@ -156,7 +160,7 @@ const jobSearchResultSchema = z.object({
       company: z.string(),
       location: z.string(),
       link: z.string(),
-      platform: z.enum(["LinkedIn", "Unstop", "Other"])
+      platform: z.enum(["LinkedIn", "Unstop", "Shine", "Other"])
     })
   )
 });
@@ -219,8 +223,12 @@ async function generateWithRetry(fn, retries = 5, delay = 8000) {
   }
 }
 
-async function generateContentWithFallback({ model = "gemini-3-flash-preview", contents, config }) {
+async function generateContentWithFallback({ model = "gemini-3-flash-preview", contents, config, userId = null, feature = "AI Services" }) {
+  const startTime = Date.now();
+  let finalModelUsed = model;
+
   const makeCall = async (targetModel) => {
+    finalModelUsed = targetModel;
     return await ai.models.generateContent({ 
       model: targetModel, 
       contents: targetModel === "gemini-2.5-flash" ? cleanContentForStableModel(contents) : contents, 
@@ -231,26 +239,88 @@ async function generateContentWithFallback({ model = "gemini-3-flash-preview", c
   const selectedModel = useFallbackDirectly ? "gemini-2.5-flash" : model;
 
   try {
-    return await generateWithRetry(() => makeCall(selectedModel), 5, 8000);
+    const response = await generateWithRetry(() => makeCall(selectedModel), 5, 8000);
+    const latencyMs = Date.now() - startTime;
+    let inputTokens = 0;
+    let outputTokens = 0;
+    
+    if (response && response.usageMetadata) {
+      inputTokens = response.usageMetadata.promptTokenCount || 0;
+      outputTokens = response.usageMetadata.candidatesTokenCount || 0;
+    }
+
+    logAiRequest({
+      provider: "Gemini",
+      model: finalModelUsed,
+      user: userId,
+      feature,
+      inputTokens,
+      outputTokens,
+      latencyMs,
+      success: true
+    });
+
+    return response;
   } catch (error) {
     if (selectedModel !== "gemini-2.5-flash") {
       console.warn(`${selectedModel} failed, falling back to gemini-2.5-flash. Error:`, error.message);
       try {
-        return await generateWithRetry(() => makeCall("gemini-2.5-flash"), 5, 8000);
+        const response = await generateWithRetry(() => makeCall("gemini-2.5-flash"), 5, 8000);
+        const latencyMs = Date.now() - startTime;
+        let inputTokens = 0;
+        let outputTokens = 0;
+        
+        if (response && response.usageMetadata) {
+          inputTokens = response.usageMetadata.promptTokenCount || 0;
+          outputTokens = response.usageMetadata.candidatesTokenCount || 0;
+        }
+
+        logAiRequest({
+          provider: "Gemini",
+          model: "gemini-2.5-flash",
+          user: userId,
+          feature,
+          inputTokens,
+          outputTokens,
+          latencyMs,
+          success: true
+        });
+
+        return response;
       } catch (fallbackError) {
         console.error("Fallback to gemini-2.5-flash also failed:", fallbackError);
+        const latencyMs = Date.now() - startTime;
+        logAiRequest({
+          provider: "Gemini",
+          model: "gemini-2.5-flash",
+          user: userId,
+          feature,
+          latencyMs,
+          success: false,
+          errorMessage: fallbackError.message
+        });
         throw fallbackError;
       }
     }
+    const latencyMs = Date.now() - startTime;
+    logAiRequest({
+      provider: "Gemini",
+      model: selectedModel,
+      user: userId,
+      feature,
+      latencyMs,
+      success: false,
+      errorMessage: error.message
+    });
     throw error;
   }
 }
 
-async function retrieveJobsAgentically({ jobRole }) {
+async function retrieveJobsAgentically({ jobRole, location = "", userId = null }) {
   const jobService = require("./job.service");
 
   try {
-    const prompt = `Find real job applications for: "${jobRole}". Use the fetchJobPostings tool to search LinkedIn and Unstop first.`;
+    const prompt = `Find real job applications for: "${jobRole}" in location: "${location || "Worldwide"}". Use the fetchJobPostings tool to search LinkedIn and Shine first.`;
 
     const config = {
       systemInstruction: "You are a career assistant Agent. You must search for jobs using the fetchJobPostings tool. Always invoke the tool first to fetch jobs, then format the fetched jobs as a clean JSON list.",
@@ -259,11 +329,12 @@ async function retrieveJobsAgentically({ jobRole }) {
           functionDeclarations: [
             {
               name: "fetchJobPostings",
-              description: "Retrieves job postings from LinkedIn and Unstop for a specific job title.",
+              description: "Retrieves job postings from LinkedIn and Shine for a specific job title and optional location.",
               parameters: {
                 type: "OBJECT",
                 properties: {
-                  jobRole: { type: "STRING", description: "The job title to search (e.g. 'Node.js Developer')" }
+                  jobRole: { type: "STRING", description: "The job title to search (e.g. 'Node.js Developer')" },
+                  location: { type: "STRING", description: "The location to search jobs in (e.g. 'India', 'United States', 'Remote')" }
                 },
                 required: ["jobRole"]
               }
@@ -277,7 +348,9 @@ async function retrieveJobsAgentically({ jobRole }) {
     let response = await generateContentWithFallback({
       model: "gemini-3-flash-preview",
       contents: prompt,
-      config: config
+      config: config,
+      userId,
+      feature: "Agentic Job Search"
     });
 
     console.log("Gemini Agent Call 1 finished. Function Calls:", response.functionCalls);
@@ -289,10 +362,10 @@ async function retrieveJobsAgentically({ jobRole }) {
       const call = response.functionCalls[0];
       
       if (call.name === "fetchJobPostings") {
-        console.log("Agent executing tool: fetchJobPostings for", call.args.jobRole);
+        console.log("Agent executing tool: fetchJobPostings for", call.args.jobRole, "in", call.args.location || location);
         
         // Execute the scraper tool
-        const jobsFound = await jobService.fetchJobPostings(call.args.jobRole);
+        const jobsFound = await jobService.fetchJobPostings(call.args.jobRole, call.args.location || location);
         console.log(`Tool retrieved ${jobsFound.length} jobs.`);
 
         // Send tool response to Gemini
@@ -306,8 +379,8 @@ async function retrieveJobsAgentically({ jobRole }) {
           config: {
             responseMimeType: "application/json",
             systemInstruction: `You are a career advisor agent. Analyze the jobs array supplied in the function response.
-Filter out any job listings that are completely unrelated to the requested role: "${jobRole}".
-Be reasonably flexible: keep titles like 'Full Stack Developer', 'Frontend Engineer', or 'Software Engineer' for a 'React Developer' request if they align with that track, but discard completely different roles (like 'Sales Manager', 'HR Recruiter', or 'AI Specialist' unless it specifically requires React).
+Filter out any job listings that are completely unrelated to the requested role: "${jobRole}" or the requested location: "${location || "Worldwide"}".
+Be reasonably flexible: keep titles like 'Full Stack Developer', 'Frontend Engineer', or 'Software Engineer' for a 'React Developer' request if they align with that track, but discard completely different roles.
 Format the relevant jobs into a valid JSON object matching this schema:
 {
   "jobRole": "${jobRole}",
@@ -317,11 +390,13 @@ Format the relevant jobs into a valid JSON object matching this schema:
       "company": "string",
       "location": "string",
       "link": "string",
-      "platform": "LinkedIn" | "Unstop" | "Other"
+      "platform": "LinkedIn" | "Shine" | "Other"
     }
   ]
 }`
-          }
+          },
+          userId,
+          feature: "Agentic Job Search"
         });
 
         finalOutput = secondResponse.text;
@@ -329,7 +404,7 @@ Format the relevant jobs into a valid JSON object matching this schema:
     } else {
       // Model returned text directly instead of function calling (e.g., if it didn't use the tool)
       console.log("Model did not request function calling. Running manual fallback.");
-      const jobsFound = await jobService.fetchJobPostings(jobRole);
+      const jobsFound = await jobService.fetchJobPostings(jobRole, location);
       
       const formatResponse = await generateContentWithFallback({
         model: "gemini-3-flash-preview",
@@ -337,7 +412,7 @@ Format the relevant jobs into a valid JSON object matching this schema:
         config: {
           responseMimeType: "application/json",
           systemInstruction: `You are a career advisor agent. Parse and filter the job listings list.
-Filter out any job listings that are completely unrelated to the requested role: "${jobRole}".
+Filter out any job listings that are completely unrelated to the requested role: "${jobRole}" or the requested location: "${location || "Worldwide"}".
 Format the relevant jobs into a valid JSON object matching this schema:
 {
   "jobRole": "${jobRole}",
@@ -347,11 +422,13 @@ Format the relevant jobs into a valid JSON object matching this schema:
       "company": "string",
       "location": "string",
       "link": "string",
-      "platform": "LinkedIn" | "Unstop" | "Other"
+      "platform": "LinkedIn" | "Shine" | "Other"
     }
   ]
 }`
-        }
+        },
+        userId,
+        feature: "Agentic Job Search"
       });
       finalOutput = formatResponse.text;
     }
@@ -364,13 +441,13 @@ Format the relevant jobs into a valid JSON object matching this schema:
     console.error("Agentic Job Search Error, falling back to raw scraped results:", error);
     try {
       const jobService = require("./job.service");
-      const rawJobs = await jobService.fetchJobPostings(jobRole);
+      const rawJobs = await jobService.fetchJobPostings(jobRole, location);
       return {
         jobRole,
         jobs: rawJobs
       };
     } catch (fallbackError) {
-      console.error("Unstop / LinkedIn scrape fallback failed:", fallbackError);
+      console.error("LinkedIn / Shine scrape fallback failed:", fallbackError);
       if (error instanceof z.ZodError) {
         console.error("Schema Validation Error:", error.issues);
       }
@@ -391,7 +468,7 @@ const aiQuizSchema = z.object({
   )
 });
 
-async function generateQuizAgentically({ mode, skills, jobTitle, numQuestions, difficulty }) {
+async function generateQuizAgentically({ mode, skills, jobTitle, numQuestions, difficulty, userId = null }) {
   try {
     const scope = mode === 'jd' 
       ? `Job Description / Title: "${jobTitle}"`
@@ -437,7 +514,9 @@ Requirements:
       contents: prompt,
       config: {
         responseMimeType: "application/json"
-      }
+      },
+      userId,
+      feature: "Quiz Generation"
     });
 
     console.log("Quiz Raw AI Response:", response.text);
@@ -496,7 +575,7 @@ const tailoredResumeSchema = z.object({
   })
 });
 
-async function generateTailoredResume({ resumeText, jobDescription }) {
+async function generateTailoredResume({ resumeText, jobDescription, userId = null }) {
   try {
     const prompt = `
 You are an expert ATS (Applicant Tracking System) optimizer and professional resume writer.
@@ -568,7 +647,9 @@ ${jobDescription}
       contents: prompt,
       config: {
         responseMimeType: "application/json"
-      }
+      },
+      userId,
+      feature: "Resume Tailoring"
     });
 
     console.log("Tailored Resume Raw AI Response:", response.text);

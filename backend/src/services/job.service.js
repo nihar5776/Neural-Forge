@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-async function fetchJobPostings(jobRole) {
+async function fetchJobPostings(jobRole, location = "") {
   const jobs = [];
   let linkedinFailed = false;
   let shineFailed = false;
@@ -8,7 +8,10 @@ async function fetchJobPostings(jobRole) {
   // 1. Try to fetch from LinkedIn public guest jobs endpoint
   try {
     const encodedRole = encodeURIComponent(jobRole);
-    const linkedinUrl = `https://www.linkedin.com/jobs/search?keywords=${encodedRole}`;
+    let linkedinUrl = `https://www.linkedin.com/jobs/search?keywords=${encodedRole}`;
+    if (location && location.trim() !== "") {
+      linkedinUrl += `&location=${encodeURIComponent(location.trim())}`;
+    }
     
     const response = await axios.get(linkedinUrl, {
       headers: {
