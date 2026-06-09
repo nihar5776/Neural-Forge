@@ -75,7 +75,7 @@ export default function ReportDetails({ report }) {
         
         <div className="score-section">
           <div 
-            className="progress-circle" 
+            className="progress-circle animate-scale-in" 
             style={{ '--progress': report.matchScore || 0 }}
           >
             <span className="progress-text">{report.matchScore || 0}%</span>
@@ -105,7 +105,7 @@ export default function ReportDetails({ report }) {
                 return (
                   <div 
                     key={index} 
-                    className="skill-gap-item" 
+                    className="skill-gap-item stagger-item" 
                     style={{ 
                       backgroundColor: `hsl(${style.bg})`, 
                       borderColor: style.border,
@@ -134,7 +134,7 @@ export default function ReportDetails({ report }) {
           {report.preparationPlan && report.preparationPlan.length > 0 ? (
             <div className="prep-plan-timeline">
               {report.preparationPlan.map((plan, index) => (
-                <div key={index} className="timeline-day">
+                <div key={index} className="timeline-day stagger-item">
                   <div className="timeline-badge">Day {plan.day}</div>
                   <div className="timeline-content">
                     <h4 className="timeline-focus">{plan.focus}</h4>
@@ -181,23 +181,21 @@ export default function ReportDetails({ report }) {
             {report.technicalQuestions.map((qa, index) => {
               const isExpanded = expandedQuestions[`tech-${index}`];
               return (
-                <div key={index} className="qa-item">
+                <div key={index} className={`qa-item ${isExpanded ? 'expanded' : ''} stagger-item`}>
                   <button className="qa-trigger" onClick={() => toggleQuestion(index, 'tech')}>
                     <span className="question-text">Q: {qa.question}</span>
                     {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
-                  {isExpanded && (
-                    <div className="qa-expanded-body">
-                      <div className="qa-meta-block">
-                        <strong>Recruiter Intent:</strong>
-                        <p>{qa.intention}</p>
-                      </div>
-                      <div className="qa-meta-block">
-                        <strong>Suggested Response:</strong>
-                        <p className="suggested-answer">{qa.answer}</p>
-                      </div>
+                  <div className="qa-expanded-body">
+                    <div className="qa-meta-block">
+                      <strong>Recruiter Intent:</strong>
+                      <p>{qa.intention}</p>
                     </div>
-                  )}
+                    <div className="qa-meta-block">
+                      <strong>Suggested Response:</strong>
+                      <p className="suggested-answer">{qa.answer}</p>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -217,23 +215,21 @@ export default function ReportDetails({ report }) {
             {report.behavioralQuestions.map((qa, index) => {
               const isExpanded = expandedQuestions[`behavioral-${index}`];
               return (
-                <div key={index} className="qa-item">
+                <div key={index} className={`qa-item ${isExpanded ? 'expanded' : ''} stagger-item`}>
                   <button className="qa-trigger" onClick={() => toggleQuestion(index, 'behavioral')}>
                     <span className="question-text">Q: {qa.question}</span>
                     {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
-                  {isExpanded && (
-                    <div className="qa-expanded-body">
-                      <div className="qa-meta-block">
-                        <strong>Recruiter Intent:</strong>
-                        <p>{qa.intention}</p>
-                      </div>
-                      <div className="qa-meta-block">
-                        <strong>Suggested Response:</strong>
-                        <p className="suggested-answer">{qa.answer}</p>
-                      </div>
+                  <div className="qa-expanded-body">
+                    <div className="qa-meta-block">
+                      <strong>Recruiter Intent:</strong>
+                      <p>{qa.intention}</p>
                     </div>
-                  )}
+                    <div className="qa-meta-block">
+                      <strong>Suggested Response:</strong>
+                      <p className="suggested-answer">{qa.answer}</p>
+                    </div>
+                  </div>
                 </div>
               );
             })}

@@ -118,7 +118,7 @@ Job Description:
 ${jobDescription}
 `;
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithFallback({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
@@ -313,11 +313,21 @@ Format the relevant jobs into a valid JSON object matching this schema:
     const validated = jobSearchResultSchema.parse(parsed);
     return validated;
   } catch (error) {
-    console.error("Agentic Job Search Error:", error);
-    if (error instanceof z.ZodError) {
-      console.error("Schema Validation Error:", error.issues);
+    console.error("Agentic Job Search Error, falling back to raw scraped results:", error);
+    try {
+      const jobService = require("./job.service");
+      const rawJobs = await jobService.fetchJobPostings(jobRole);
+      return {
+        jobRole,
+        jobs: rawJobs
+      };
+    } catch (fallbackError) {
+      console.error("Unstop / LinkedIn scrape fallback failed:", fallbackError);
+      if (error instanceof z.ZodError) {
+        console.error("Schema Validation Error:", error.issues);
+      }
+      throw error;
     }
-    throw error;
   }
 }
 

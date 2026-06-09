@@ -135,7 +135,7 @@ export default function Dashboard() {
             {reports.map((report) => (
               <div 
                 key={report._id} 
-                className="report-history-row card"
+                className="report-history-row card stagger-item"
                 onClick={() => setSelectedReport(report)}
               >
                 <div className="report-row-main">

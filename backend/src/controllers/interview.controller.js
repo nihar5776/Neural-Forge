@@ -38,6 +38,17 @@ async function generateUserInterviewReport(req, res) {
           message: "Failed to parse PDF resume. Please ensure the file is a valid, unencrypted PDF document."
         });
       }
+
+      // Save the uploaded resume to the database permanently
+      try {
+        await resumeModel.create({
+          resume: resumeText,
+          filename: resume.originalname || "Resume.pdf",
+          user: userId
+        });
+      } catch (saveError) {
+        console.error("Failed to automatically save uploaded resume to database:", saveError);
+      }
     }
 
     let response;

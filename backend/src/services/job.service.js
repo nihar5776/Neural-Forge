@@ -3,7 +3,7 @@ const axios = require("axios");
 async function fetchJobPostings(jobRole) {
   const jobs = [];
   let linkedinFailed = false;
-  let unstopFailed = false;
+  let shineFailed = false;
 
   // 1. Try to fetch from LinkedIn public guest jobs endpoint
   try {
@@ -43,7 +43,7 @@ async function fetchJobPostings(jobRole) {
       locations.push(match[1].trim());
     }
 
-    for (let i = 0; i < Math.min(titles.length, 5); i++) {
+    for (let i = 0; i < titles.length; i++) {
       jobs.push({
         title: titles[i],
         company: companies[i] || "LinkedIn Recruiter",
@@ -57,47 +57,47 @@ async function fetchJobPostings(jobRole) {
     linkedinFailed = true;
   }
 
-  // 2. Try to fetch from Unstop search
+  // 2. Try to fetch from Shine search
   try {
-    const encodedRole = encodeURIComponent(jobRole);
-    // Unstop opportunity API endpoint search
-    const unstopUrl = `https://unstop.com/api/public/opportunity/search-result?opportunity=jobs&search=${encodedRole}`;
-    const response = await axios.get(unstopUrl, {
+    const slug = jobRole.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const shineUrl = `https://www.shine.com/job-search/${slug}-jobs`;
+    const response = await axios.get(shineUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
       },
-      timeout: 5000
+      timeout: 10000
     });
 
-    if (response.data && response.data.data && Array.isArray(response.data.data.data)) {
-      const listings = response.data.data.data;
-      for (let i = 0; i < Math.min(listings.length, 5); i++) {
+    const html = response.data;
+    const nextDataRegex = /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/;
+    const match = nextDataRegex.exec(html);
+    if (match) {
+      const jsonData = JSON.parse(match[1]);
+      const listings = jsonData.props?.pageProps?.initialState?.jsrp?.searchresult?.data?.results || [];
+      
+      for (let i = 0; i < listings.length; i++) {
         const item = listings[i];
+        const title = item.jJT || "Job Opportunity";
+        const company = item.jCName || "Shine Partner";
+        const locations = Array.isArray(item.jLoc) ? item.jLoc.join(', ') : (item.jLoc || "India");
+        const link = item.jSlug ? `https://www.shine.com/jobs/${item.jSlug}` : "https://www.shine.com";
         
-        let loc = "Online";
-        if (item.locations && item.locations.length > 0) {
-          const l = item.locations[0];
-          loc = l.city ? `${l.city}, ${l.country || "India"}` : (item.region || "Online");
-        } else if (item.region) {
-          loc = item.region;
-        }
-
         jobs.push({
-          title: item.title,
-          company: item.organisation?.name || "Unstop Partner",
-          location: loc,
-          link: item.seo_url || item.short_url || `https://unstop.com/o/${item.short_id || item.id}`,
-          platform: "Unstop"
+          title: title,
+          company: company,
+          location: locations,
+          link: link,
+          platform: "Shine"
         });
       }
     }
   } catch (err) {
-    console.error("Unstop Opportunity fetch failed:", err.message);
-    unstopFailed = true;
+    console.error("Shine opportunity fetch failed:", err.message);
+    shineFailed = true;
   }
 
   // If both APIs failed due to connectivity, throw an error
-  if (linkedinFailed && unstopFailed) {
+  if (linkedinFailed && shineFailed) {
     throw new Error("Job search failed due to network connectivity issues.");
   }
 

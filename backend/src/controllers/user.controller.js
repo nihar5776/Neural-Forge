@@ -4,63 +4,87 @@ const BlackListModel  = require("../models/BlackList.model")
 
 
 const userRegisterController = async (req,res)=>{
-   
-    const {email , password , name} = req.body;
-    const isExists = await userModel.findOne({
-        email:email
-    })
-    if(isExists){
-       return res.status(422).json({
-            status :"Failed",
-            message : "User Already Exits With this Email"
+    try {
+        const {email , password , name} = req.body;
+        const isExists = await userModel.findOne({
+            email:email
         })
-    }
-    const user = await userModel.create({
-        email,password,name
-    })
+        if(isExists){
+           return res.status(422).json({
+                status :"Failed",
+                message : "User Already Exits With this Email"
+            })
+        }
+        const user = await userModel.create({
+            email,password,name
+        })
 
-   res.status(201).json({
-    user:{
-        _id : user._id,
-        email : user.email,
-        name : user.name
-    },
-   })
+       return res.status(201).json({
+        status: "Success",
+        user:{
+            _id : user._id,
+            email : user.email,
+            name : user.name
+        },
+       })
+    } catch (error) {
+        if (error.name === "ValidationError") {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({
+                status: "Failed",
+                message: messages[0] || "Validation failed"
+            });
+        }
+        console.error("Register Error:", error);
+        return res.status(500).json({
+            status: "Failed",
+            message: error.message || "Internal Server Error"
+        });
+    }
 } 
 
 const userloginController = async (req, res) => {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    const user = await userModel
-        .findOne({ email })
-        .select("+password");
+        const user = await userModel
+            .findOne({ email })
+            .select("+password");
 
-    if (!user) {
-        return res.status(401).json({
+        if (!user) {
+            return res.status(401).json({
+                status: "Failed",
+                message: "No account on this email. Please Register first."
+            });
+        }
+
+        const validPassword = await user.passwordCompare(password);
+
+        if (!validPassword) {
+            return res.status(401).json({
+                status: "Failed",
+                message: "Invalid Password"
+            });
+        }
+        const token = jwt.sign({userId:user._id},process.env.jwt_secret,{expiresIn :'2h'})
+        res.cookie("token",token)
+
+        return res.status(200).json({
+            status: "Success",
+            user: {
+                _id: user._id,
+                email: user.email,
+                name: user.name
+            },
+            token
+        });
+    } catch (error) {
+        console.error("Login Error:", error);
+        return res.status(500).json({
             status: "Failed",
-            message: "No account on this email. Please Register first."
+            message: error.message || "Internal Server Error"
         });
     }
-
-    const validPassword = await user.passwordCompare(password);
-
-    if (!validPassword) {
-        return res.status(401).json({
-            status: "Failed",
-            message: "Invalid Password"
-        });
-    }
-    const token = jwt.sign({userId:user._id},process.env.jwt_secret,{expiresIn :'2h'})
-    res.cookie("token",token)
-
-    res.status(200).json({
-        user: {
-            _id: user._id,
-            email: user.email,
-            name: user.name
-        },
-        token
-    });
 };
 
 
