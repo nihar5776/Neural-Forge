@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
-import { User, Mail, FileText, Trash2, Upload, AlertCircle, CheckCircle, RefreshCw, Calendar } from 'lucide-react';
+import { User, Mail, FileText, Trash2, Upload, AlertCircle, CheckCircle, RefreshCw, Calendar, Edit3 } from 'lucide-react';
 
 export default function Profile() {
   const [resumes, setResumes] = useState([]);
@@ -10,6 +10,8 @@ export default function Profile() {
   const [success, setSuccess] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [user, setUser] = useState(null);
+  const [editingResumeId, setEditingResumeId] = useState(null);
+  const [editingResumeName, setEditingResumeName] = useState('');
   const fileInputRef = useRef(null);
 
   const fetchUserData = async () => {
@@ -110,6 +112,34 @@ export default function Profile() {
     }
   };
 
+  const startRename = (resume) => {
+    setEditingResumeId(resume._id);
+    setEditingResumeName(resume.filename);
+  };
+
+  const cancelRename = () => {
+    setEditingResumeId(null);
+    setEditingResumeName('');
+  };
+
+  const saveRename = async (resumeId) => {
+    if (!editingResumeName.trim()) {
+      setError('Resume name cannot be empty.');
+      return;
+    }
+    setError('');
+    setSuccess('');
+    try {
+      const res = await api.patch(`/api/resumeUpload/rename/${resumeId}`, { newName: editingResumeName });
+      setSuccess(res.message || 'Resume renamed successfully.');
+      setResumes(prev => prev.map(r => r._id === resumeId ? { ...r, filename: res.filename } : r));
+      setEditingResumeId(null);
+    } catch (err) {
+      console.error('Rename failed:', err);
+      setError(err.message || 'Failed to rename resume.');
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -185,13 +215,40 @@ export default function Profile() {
             ) : (
               <div className="profile-resumes-list">
                 {resumes.map((resume) => (
-                  <div key={resume._id} className="profile-resume-row">
+                  <div key={resume._id} className="profile-resume-row stagger-item">
                     <div className="resume-row-left">
                       <FileText className="file-icon" size={20} />
-                      <div className="resume-meta-info">
-                        <span className="resume-name-title" title={resume.filename}>
-                          {resume.filename}
-                        </span>
+                      <div className="resume-meta-info" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        {editingResumeId === resume._id ? (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={editingResumeName}
+                              onChange={(e) => setEditingResumeName(e.target.value.replace(/[^a-zA-Z0-9_ -\.]/g, ''))}
+                              autoFocus
+                              style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--primary))', fontSize: '14px', width: '200px' }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveRename(resume._id);
+                                if (e.key === 'Escape') cancelRename();
+                              }}
+                            />
+                            <button onClick={() => saveRename(resume._id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--success))' }} title="Save">
+                              <CheckCircle size={16} />
+                            </button>
+                            <button onClick={cancelRename} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--text-muted))' }} title="Cancel">
+                              <AlertCircle size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="resume-name-title" title={resume.filename}>
+                              {resume.filename}
+                            </span>
+                            <button onClick={() => startRename(resume)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--text-muted))', padding: '0' }} title="Rename">
+                              <Edit3 size={14} />
+                            </button>
+                          </div>
+                        )}
                         <span className="resume-date-stamp">
                           <Calendar size={12} />
                           {formatDate(resume.createdAt)}

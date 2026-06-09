@@ -95,8 +95,53 @@ async function deleteUserResume(req, res) {
   }
 }
 
+async function renameUserResume(req, res) {
+  try {
+    const userId = req.user.userId || req.user.id;
+    const resumeId = req.params.id;
+    const { newName } = req.body;
+
+    if (!newName || typeof newName !== 'string' || newName.trim() === '') {
+      return res.status(400).json({ status: "Failed", message: "A valid new name is required." });
+    }
+
+    const cleanName = newName.trim();
+
+    // Enforce uniqueness
+    let finalFilename = cleanName;
+    let existing = await resumeModel.findOne({ user: userId, filename: finalFilename, _id: { $ne: resumeId } });
+    let counter = 1;
+    
+    while (existing) {
+      finalFilename = `${cleanName}_${counter}`;
+      existing = await resumeModel.findOne({ user: userId, filename: finalFilename, _id: { $ne: resumeId } });
+      counter++;
+    }
+
+    const updatedResume = await resumeModel.findOneAndUpdate(
+      { _id: resumeId, user: userId },
+      { filename: finalFilename },
+      { new: true }
+    );
+
+    if (!updatedResume) {
+      return res.status(404).json({ status: "Failed", message: "Resume not found or unauthorized." });
+    }
+
+    res.status(200).json({
+      status: "Successful",
+      message: "Resume renamed successfully.",
+      filename: updatedResume.filename
+    });
+  } catch (err) {
+    console.error("Error in renameUserResume:", err);
+    res.status(500).json({ status: "Failed", message: "An error occurred while renaming the resume.", error: err.message });
+  }
+}
+
 module.exports = {
   resumeUpload,
   getUserResumes,
-  deleteUserResume
+  deleteUserResume,
+  renameUserResume
 };

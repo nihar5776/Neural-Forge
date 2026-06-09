@@ -10,7 +10,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Quiz from './pages/Quiz';
 import MockInterview from './pages/MockInterview';
-import { Loader } from 'lucide-react';
+import TailorResume from './pages/TailorResume';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -78,6 +78,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/dashboard/mock-interview" element={<MockInterview />} />
+          <Route path="/tailor" element={<TailorResume />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

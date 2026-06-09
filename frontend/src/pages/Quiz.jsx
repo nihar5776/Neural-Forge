@@ -17,7 +17,7 @@ export default function Quiz() {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [customSkillInput, setCustomSkillInput] = useState('');
   
-  const [difficulty, setDifficulty] = useState('Medium');
+  const [difficulty, setDifficulty] = useState('Easy');
   const [numQuestions, setNumQuestions] = useState(5);
   
   // Quiz gameplay states
@@ -25,9 +25,7 @@ export default function Quiz() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState({}); // { questionIndex: selectedOptionString }
   
-  // Quiz history states
-  const [quizHistory, setQuizHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
+
 
   // Fetch report history for setup dropdowns & fetch quiz history
   const loadSetupData = async () => {
@@ -62,21 +60,8 @@ export default function Quiz() {
     }
   };
 
-  const loadQuizHistory = async () => {
-    setHistoryLoading(true);
-    try {
-      const data = await api.get('/api/quiz/history');
-      setQuizHistory(data.history || []);
-    } catch (err) {
-      console.error("Failed to load quiz history:", err);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
   useEffect(() => {
     loadSetupData();
-    loadQuizHistory();
   }, []);
 
   const handleAddCustomSkill = (e) => {
@@ -152,6 +137,19 @@ export default function Quiz() {
   };
 
   const handleNext = () => {
+    const currentQuestion = quizData.questions[currentQuestionIdx];
+    const selected = answers[currentQuestionIdx] || '';
+    const correct = currentQuestion.correctAnswer || '';
+    const isCorrect = selected.trim().toLowerCase() === correct.trim().toLowerCase();
+
+    if (isCorrect) {
+      setDifficulty(prev => {
+        if (prev === 'Easy') return 'Medium';
+        if (prev === 'Medium') return 'Hard';
+        return 'Hard';
+      });
+    }
+
     if (currentQuestionIdx < quizData.questions.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
     }
@@ -163,7 +161,7 @@ export default function Quiz() {
     }
   };
 
-  const handleSubmitQuiz = async () => {
+  const handleSubmitQuiz = () => {
     // Grade the quiz
     const gradedQuestions = quizData.questions.map((q, idx) => {
       const selected = answers[idx] || '';
@@ -178,38 +176,24 @@ export default function Quiz() {
       };
     });
 
+    // Adjust difficulty level one final time if the last question is correct
+    const lastQuestionGraded = gradedQuestions[currentQuestionIdx];
+    let finalDifficulty = difficulty;
+    if (lastQuestionGraded && lastQuestionGraded.isCorrect) {
+      if (difficulty === 'Easy') finalDifficulty = 'Medium';
+      else if (difficulty === 'Medium') finalDifficulty = 'Hard';
+    }
+    setDifficulty(finalDifficulty);
+
     const correctCount = gradedQuestions.filter(q => q.isCorrect).length;
     const finalScore = Math.round((correctCount / quizData.questions.length) * 100);
 
-    setLoading(true);
-    setError('');
-
-    try {
-      const payload = {
-        title: quizData.title || `${quizMode === 'jd' ? selectedJobTitle : selectedSkills.slice(0,2).join(', ')} Quiz`,
-        difficulty,
-        score: finalScore,
-        totalQuestions: quizData.questions.length,
-        questions: gradedQuestions
-      };
-
-      const resultData = await api.post('/api/quiz/submit', payload);
-      setQuizData(resultData.response); // Set the graded response
-      setGameState('results');
-      loadQuizHistory(); // Reload history
-    } catch (err) {
-      console.error("Failed to submit quiz results:", err);
-      setError("Failed to save your quiz results to database.");
-      // Still show results state even if save fails so user doesn't lose feedback
-      setQuizData(prev => ({
-        ...prev,
-        score: finalScore,
-        questions: gradedQuestions
-      }));
-      setGameState('results');
-    } finally {
-      setLoading(false);
-    }
+    setQuizData(prev => ({
+      ...prev,
+      score: finalScore,
+      questions: gradedQuestions
+    }));
+    setGameState('results');
   };
 
   const getQuizScoreColor = (score) => {
@@ -316,13 +300,13 @@ export default function Quiz() {
         <div className="results-summary-card card">
           <div className="score-ring-wrapper">
             <div 
-              className="progress-circle" 
+              className="progress-circle animate-scale-in" 
               style={{ '--progress': quizData.score, background: `conic-gradient(${scoreColor} calc(var(--progress) * 1%), var(--border-color) 0)` }}
             >
               <span className="progress-text">{quizData.score}%</span>
             </div>
             <div className="results-score-info">
-              <Trophy className="trophy-icon" size={32} style={{ color: scoreColor }} />
+              <Trophy className="trophy-icon animate-float" size={32} style={{ color: scoreColor }} />
               <h3>Quiz Completed!</h3>
               <p>
                 You got {quizData.questions.filter(q => q.isCorrect).length} out of {quizData.questions.length} questions correct.
@@ -337,7 +321,7 @@ export default function Quiz() {
         <h3 className="section-title">Question Breakdown</h3>
         <div className="results-breakdown-list">
           {quizData.questions.map((q, idx) => (
-            <div key={idx} className={`result-question-card card ${q.isCorrect ? 'correct-border' : 'incorrect-border'}`}>
+            <div key={idx} className={`result-question-card card ${q.isCorrect ? 'correct-border' : 'incorrect-border'} stagger-item`}>
               <div className="result-q-header">
                 {q.isCorrect ? (
                   <CheckCircle size={22} className="correct-icon" />
@@ -358,7 +342,7 @@ export default function Quiz() {
                   else if (isSelected) styleClass = 'incorrect-choice';
 
                   return (
-                    <div key={oIdx} className={`result-option-row-review ${styleClass}`}>
+                    <div key={oIdx} className={`result-option-row-review ${styleClass} stagger-item`}>
                       <span className="option-letter">{letter}</span>
                       <span className="option-text">{option}</span>
                       {isCorrectAnswer && <span className="answer-badge correct">Correct Answer</span>}
@@ -414,9 +398,9 @@ export default function Quiz() {
           </div>
         </div>
       ) : (
-        <div className="upload-form-grid">
+        <div className="quiz-setup-wrapper" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
           {/* Settings Column */}
-          <div className="form-column">
+          <div className="form-column" style={{ width: '100%', maxWidth: '600px' }}>
             <form onSubmit={handleStartQuiz} className="quiz-setup-card card">
               <h3>Quiz Configuration</h3>
 
@@ -494,20 +478,6 @@ export default function Quiz() {
               )}
 
               <div className="form-group">
-                <label htmlFor="difficultySelect" className="section-label">Difficulty Level</label>
-                <select
-                  id="difficultySelect"
-                  className="resume-dropdown-select"
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value)}
-                >
-                  <option value="Easy">Easy (Conceptual / Basics)</option>
-                  <option value="Medium">Medium (Implementation / Scenarios)</option>
-                  <option value="Hard">Hard (Architecture / Deep Troubleshoot)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
                 <label htmlFor="numQuestionsInput" className="section-label">Number of Questions</label>
                 <input
                   id="numQuestionsInput"
@@ -529,41 +499,6 @@ export default function Quiz() {
                 <Play size={16} /> Generate & Start Quiz
               </button>
             </form>
-          </div>
-
-          {/* History Column */}
-          <div className="form-column">
-            <div className="quiz-history-card card">
-              <h3>Quiz History</h3>
-
-              {historyLoading ? (
-                <div className="loading-state-box">
-                  <RefreshCw className="spinner" size={24} />
-                  <p>Fetching history...</p>
-                </div>
-              ) : quizHistory.length === 0 ? (
-                <p className="no-resumes-msg">No completed quiz sessions found. Start a quiz above to build your track record!</p>
-              ) : (
-                <div className="quiz-history-list">
-                  {quizHistory.map((q) => (
-                    <div key={q._id} className="quiz-history-row-item">
-                      <div className="quiz-hist-left">
-                        <Award size={20} className="award-icon" style={{ color: getQuizScoreColor(q.score) }} />
-                        <div className="quiz-hist-meta">
-                          <span className="quiz-hist-title" title={q.title}>{q.title}</span>
-                          <span className="quiz-hist-diff">{q.difficulty} • {q.totalQuestions} questions</span>
-                        </div>
-                      </div>
-                      <div className="quiz-hist-right">
-                        <span className="quiz-hist-score" style={{ color: getQuizScoreColor(q.score) }}>
-                          {q.score}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}

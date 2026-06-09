@@ -15,7 +15,9 @@ const userSchema = new mongoose.Schema(
 
     name: {
         type: String,
-        required: [true, "Name is Mandatory for creating User Account"]
+        required: [true, "Name is Mandatory for creating User Account"],
+        match: [/^[a-zA-Z0-9\s]+$/, "Name must not contain special characters"],
+        minlength: [3, "Name must be at least 3 characters"]
     },
 
     password: {

@@ -361,11 +361,21 @@ Format the relevant jobs into a valid JSON object matching this schema:
     const validated = jobSearchResultSchema.parse(parsed);
     return validated;
   } catch (error) {
-    console.error("Agentic Job Search Error:", error);
-    if (error instanceof z.ZodError) {
-      console.error("Schema Validation Error:", error.issues);
+    console.error("Agentic Job Search Error, falling back to raw scraped results:", error);
+    try {
+      const jobService = require("./job.service");
+      const rawJobs = await jobService.fetchJobPostings(jobRole);
+      return {
+        jobRole,
+        jobs: rawJobs
+      };
+    } catch (fallbackError) {
+      console.error("Unstop / LinkedIn scrape fallback failed:", fallbackError);
+      if (error instanceof z.ZodError) {
+        console.error("Schema Validation Error:", error.issues);
+      }
+      throw error;
     }
-    throw error;
   }
 }
 
@@ -443,8 +453,140 @@ Requirements:
   }
 }
 
+const tailoredResumeSchema = z.object({
+  personalInfo: z.object({
+    name: z.string(),
+    email: z.string(),
+    phone: z.string().optional(),
+    location: z.string().optional(),
+    linkedin: z.string().optional(),
+    github: z.string().optional()
+  }),
+  summary: z.string(),
+  experience: z.array(
+    z.object({
+      title: z.string(),
+      company: z.string(),
+      duration: z.string(),
+      responsibilities: z.array(z.string())
+    })
+  ),
+  education: z.array(
+    z.object({
+      degree: z.string(),
+      institution: z.string(),
+      year: z.string()
+    })
+  ),
+  skills: z.array(z.string()),
+  projects: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      technologies: z.array(z.string()),
+      link: z.string().optional()
+    })
+  ).optional(),
+  atsAnalysis: z.object({
+    matchScore: z.number().min(0).max(100),
+    matchingSkills: z.array(z.string()),
+    missingSkills: z.array(z.string()),
+    keywordMatchAnalysis: z.string(),
+    suggestionsForImprovement: z.array(z.string())
+  })
+});
+
+async function generateTailoredResume({ resumeText, jobDescription }) {
+  try {
+    const prompt = `
+You are an expert ATS (Applicant Tracking System) optimizer and professional resume writer.
+Your task is to tailor the provided Resume to perfectly align with the provided Job Description.
+
+CRITICAL RULES:
+1. NEVER invent, fabricate, or hallucinate any experience, projects, education, certifications, or skills that the candidate does not possess according to their original resume.
+2. Optimize bullet points to emphasize relevant achievements that match the Job Description requirements.
+3. Quantify achievements where possible if the original resume implies them.
+4. Naturally weave in keywords from the Job Description into the summary and experience bullet points.
+5. Create a professional, concise summary that highlights alignment with the target role.
+6. Provide an ATS Analysis section detailing the match score, matching skills, missing skills, and actionable suggestions for improvement.
+
+The JSON MUST EXACTLY follow this structure:
+{
+  "personalInfo": {
+    "name": "string",
+    "email": "string",
+    "phone": "string",
+    "location": "string",
+    "linkedin": "string",
+    "github": "string"
+  },
+  "summary": "string",
+  "experience": [
+    {
+      "title": "string",
+      "company": "string",
+      "duration": "string",
+      "responsibilities": ["string"]
+    }
+  ],
+  "education": [
+    {
+      "degree": "string",
+      "institution": "string",
+      "year": "string"
+    }
+  ],
+  "skills": ["string"],
+  "projects": [
+    {
+      "title": "string",
+      "description": "string",
+      "technologies": ["string"],
+      "link": "string"
+    }
+  ],
+  "atsAnalysis": {
+    "matchScore": 95,
+    "matchingSkills": ["string"],
+    "missingSkills": ["string"],
+    "keywordMatchAnalysis": "string",
+    "suggestionsForImprovement": ["string"]
+  }
+}
+
+Return ONLY valid JSON matching this schema exactly.
+
+Resume:
+${resumeText}
+
+Job Description:
+${jobDescription}
+`;
+
+    const response = await generateContentWithFallback({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    console.log("Tailored Resume Raw AI Response:", response.text);
+    const parsed = JSON.parse(response.text);
+    const validated = tailoredResumeSchema.parse(parsed);
+    return validated;
+  } catch (error) {
+    console.error("Resume Tailoring AI Error:", error);
+    if (error instanceof z.ZodError) {
+      console.error("Zod Schema Validation Error in Tailoring:", error.issues);
+    }
+    throw error;
+  }
+}
+
 module.exports = {
   generateInterviewReport,
   retrieveJobsAgentically,
-  generateQuizAgentically
+  generateQuizAgentically,
+  generateTailoredResume
 };
