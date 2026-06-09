@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { LayoutDashboard, FileText, Briefcase, LogOut, User, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User, ClipboardList, Wand2 } from 'lucide-react';
 
 export default function Sidebar({ user, onLogoutSuccess }) {
   const navigate = useNavigate();
@@ -50,6 +50,13 @@ export default function Sidebar({ user, onLogoutSuccess }) {
         >
           <FileText size={20} />
           <span>Resume Coaching</span>
+        </NavLink>
+        <NavLink 
+          to="/tailor" 
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <Wand2 size={20} />
+          <span>Resume Tailoring</span>
         </NavLink>
         <NavLink 
           to="/jobs" 

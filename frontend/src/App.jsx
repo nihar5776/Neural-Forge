@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Quiz from './pages/Quiz';
+import TailorResume from './pages/TailorResume';
 import { Loader } from 'lucide-react';
 
 export default function App() {
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="/jobs" element={<JobSearch />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/quiz" element={<Quiz />} />
+          <Route path="/tailor" element={<TailorResume />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

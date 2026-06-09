@@ -1,4 +1,4 @@
-require('dotenv').config(); // Antigravity: Load environment variables first to ensure API keys are populated
+require('dotenv').config();
 const express = require("express")
 const cors = require("cors")
 const app = express()
@@ -9,6 +9,7 @@ const interviewRouter = require("./src/routes/interview.routes");
 const resumeUploadRouter = require("./src/routes/resumeUpload.routes");
 const jobRouter = require("./src/routes/job.routes");
 const quizRouter = require("./src/routes/quiz.routes");
+const tailorRouter = require("./src/routes/tailor.routes");
 
 app.use(cors({
   origin: true,
@@ -24,6 +25,7 @@ app.use("/api/interview/",interviewRouter);
 app.use("/api/resumeUpload/",resumeUploadRouter);
 app.use("/api/jobs/",jobRouter);
 app.use("/api/quiz/", quizRouter);
+app.use("/api/tailor/", tailorRouter);
 
 
 module.exports = app;
