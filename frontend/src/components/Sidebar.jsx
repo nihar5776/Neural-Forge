@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { LayoutDashboard, FileText, Briefcase, LogOut, User, ClipboardList, MessageSquare, Wand2, Sparkles, Activity, Download } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User, ClipboardList, MessageSquare, Wand2, Sparkles, Activity, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function Sidebar({ user, onLogoutSuccess }) {
+export default function Sidebar({ user, onLogoutSuccess, isOpen, toggleSidebar }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -20,28 +20,41 @@ export default function Sidebar({ user, onLogoutSuccess }) {
   };
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <span className="logo-icon">VG</span>
-        <span className="logo-text">VidyaGuide</span>
+    <aside className={`sidebar ${isOpen ? '' : 'closed'}`}>
+      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'space-between' : 'center', marginBottom: '40px' }}>
+        {isOpen ? (
+          <div className="sidebar-logo" style={{ margin: 0 }}>
+            <span className="logo-icon">NF</span>
+            <span className="logo-text">Neural Forge</span>
+          </div>
+        ) : (
+          <span className="logo-icon" style={{ margin: 0 }}>NF</span>
+        )}
+        <button className="sidebar-toggle-btn" onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: isOpen ? 0 : '24px' }}>
+          {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+        </button>
       </div>
 
-      <div className="user-profile-badge">
+      <div className={`user-profile-badge ${isOpen ? '' : 'closed'}`}>
         <div className="avatar">
           <User size={20} />
         </div>
-        <div className="user-info">
-          <p className="username">{user?.name || 'Career Aspirant'}</p>
-          <p className="user-email">{user?.role === 'admin' ? `[ADMIN] ${user?.email}` : user?.email}</p>
-        </div>
+        {isOpen && (
+          <div className="user-info">
+            <p className="username">{user?.name || 'Career Aspirant'}</p>
+            <p className="user-email">{user?.role === 'admin' ? `[ADMIN] ${user?.email}` : user?.email}</p>
+          </div>
+        )}
       </div>
 
       <nav className="sidebar-nav">
         {user?.role === 'admin' ? (
           <>
-            <div className="sidebar-divider" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', margin: '0 10px 10px 10px', paddingTop: '10px', fontSize: '11px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: '0.05em' }}>
-              ADMIN PORTAL
-            </div>
+            {isOpen && (
+              <div className="sidebar-divider" style={{ borderTop: '1px solid hsla(0, 0%, 0%, 0.1)', margin: '0 10px 10px 10px', paddingTop: '10px', fontSize: '11px', fontWeight: 700, color: 'hsl(var(--text-muted))', letterSpacing: '0.05em' }}>
+                ADMIN PORTAL
+              </div>
+            )}
             <NavLink 
               to="/" 
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}

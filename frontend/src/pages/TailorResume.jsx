@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
-import { Upload, FileText, AlertCircle, RefreshCw, CheckCircle, Info, Sparkles, FolderOpen, Printer, Download, Edit3, Save, LayoutTemplate, Briefcase, ChevronRight } from 'lucide-react';
+import { Upload, FileText, AlertCircle, RefreshCw, CheckCircle, Sparkles, FolderOpen, Printer, Download, Edit3, Save, LayoutTemplate, Briefcase, ChevronRight, CheckSquare, Zap, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import TemplateRenderer from '../components/templates/TemplateRenderer';
 import ResumeEditor from '../components/ResumeEditor';
 import { exportToDocx } from '../utils/docxExport';
+import { PageTransition, AnimatedCard } from '../components/MotionWrappers';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function TailorResume() {
   const [savedResumes, setSavedResumes] = useState([]);
   const [resumesLoading, setResumesLoading] = useState(true);
-  const [resumeSource, setResumeSource] = useState('saved'); // 'saved' or 'upload'
+  const [resumeSource, setResumeSource] = useState('saved');
   const [selectedResumeId, setSelectedResumeId] = useState('');
 
   const [file, setFile] = useState(null);
@@ -25,6 +27,8 @@ export default function TailorResume() {
   const [resumeName, setResumeName] = useState('');
   
   const [isDragOver, setIsDragOver] = useState(false);
+  const previewContainerRef = useRef(null);
+  const [previewScale, setPreviewScale] = useState(1);
   
   const templates = [
     { id: 'modern', name: 'Modern Professional', desc: 'Clean layout, ideal for tech roles' },
@@ -68,13 +72,22 @@ export default function TailorResume() {
     return () => clearInterval(interval);
   }, [loading]);
 
-  const loadingMessages = [
-    "Analyzing Base Resume...",
-    "Extracting Job Description Keywords...",
-    "Aligning Experience and Skills...",
-    "Optimizing for ATS Formatting...",
-    "Rendering Final Output..."
-  ];
+  useEffect(() => {
+    if (!previewContainerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const padding = 48; // 24px padding * 2
+        const availableWidth = entry.contentRect.width - padding;
+        const availableHeight = entry.contentRect.height - padding;
+        const widthScale = availableWidth / 794; // A4 width
+        const heightScale = availableHeight / 1123; // A4 height
+        // Scale to fit the container precisely
+        setPreviewScale(Math.min(widthScale, heightScale, 1));
+      }
+    });
+    observer.observe(previewContainerRef.current);
+    return () => observer.disconnect();
+  }, [isEditing, result]);
 
   const extractJobTitle = (jd) => {
     if (!jd) return 'Tailored_Resume';
@@ -88,7 +101,6 @@ export default function TailorResume() {
     return (titleStr.replace(/[^a-zA-Z0-9\s-]/g, '').trim().replace(/\s+/g, '_') + '_Resume').replace(/^_+|_+$/g, '');
   };
 
-  // Drag and drop handlers...
   const handleDragOver = (e) => { e.preventDefault(); setIsDragOver(true); };
   const handleDragLeave = () => { setIsDragOver(false); };
   const handleDrop = (e) => {
@@ -113,7 +125,7 @@ export default function TailorResume() {
     setFile(selectedFile);
   };
   const triggerFileSelect = () => fileInputRef.current.click();
-  const removeFile = () => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
+  const removeFile = (e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -188,7 +200,7 @@ export default function TailorResume() {
     setError('');
     try {
       await api.post('/api/tailor/save', { editedData: result, resumeName });
-      setSaveSuccess('Saved successfully!');
+      setSaveSuccess('Profile payload saved to databanks successfully.');
       setTimeout(() => setSaveSuccess(''), 3000);
     } catch (err) {
       setError('Failed to save resume. ' + (err.message || ''));
@@ -198,361 +210,329 @@ export default function TailorResume() {
   };
 
   // -------------------------------------------------------------
-  // RENDER: Post-Generation (Workspace Layout)
+  // RENDER: Workspace UI
   // -------------------------------------------------------------
   if (result) {
     return (
-      <div className="animate-fade-in" style={{ padding: '0 2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-           <span style={{ color: 'hsl(var(--text-muted))', cursor: 'pointer', fontWeight: '500' }} onClick={resetForm}>Tailoring</span>
-           <ChevronRight size={16} color="hsl(var(--text-muted))" />
-           <span style={{ fontWeight: '600' }}>Workspace</span>
-        </div>
-
-        <div className="workspace-layout">
-          
-          {/* Left Sidebar */}
-          {!isEditing && (
-            <div className="workspace-sidebar no-print">
-              
-              {/* Actions Card */}
-              <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   <Edit3 size={18} color="hsl(var(--primary))"/> Workspace Actions
-                </h3>
-                <button className="btn-primary" onClick={() => setIsEditing(true)} style={{ width: '100%' }}>
-                  Edit Resume Content
-                </button>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <button className="btn-secondary" onClick={handleSaveToProfile} disabled={isSaving}>
-                    <Save size={16} /> {isSaving ? 'Saving...' : 'Save Profile'}
-                  </button>
-                  <button className="btn-secondary" onClick={resetForm}>
-                    <RefreshCw size={16} /> Start Over
-                  </button>
-                </div>
-                {saveSuccess && <div style={{ color: 'hsl(var(--success))', fontSize: '13px', textAlign: 'center', fontWeight: 'bold' }}>{saveSuccess}</div>}
-                {error && <div style={{ color: 'hsl(var(--danger))', fontSize: '13px', textAlign: 'center' }}>{error}</div>}
-              </div>
-
-              {/* Export Card */}
-              <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   <Download size={18} color="hsl(var(--primary))"/> Export Options
-                </h3>
-                <button className="btn-secondary" onClick={handleDocxDownload} style={{ width: '100%', justifyContent: 'flex-start' }}>
-                  <FileText size={16} style={{ color: 'hsl(var(--primary))' }} /> Download as DOCX
-                </button>
-                <button className="btn-secondary" onClick={handlePrint} style={{ width: '100%', justifyContent: 'flex-start' }}>
-                  <Printer size={16} style={{ color: 'hsl(var(--primary))' }} /> Print / Save as PDF
-                </button>
-              </div>
-
-              {/* Templates Card */}
-              <div className="card" style={{ padding: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   <LayoutTemplate size={18} color="hsl(var(--primary))"/> Change Template
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {templates.map(tpl => (
-                    <div 
-                      key={tpl.id}
-                      onClick={() => setSelectedTemplate(tpl.id)}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        borderRadius: '8px',
-                        border: selectedTemplate === tpl.id ? '2px solid hsl(var(--primary))' : '1px solid hsl(var(--border-color))',
-                        background: selectedTemplate === tpl.id ? 'hsl(var(--primary-light))' : 'transparent',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <span style={{ fontWeight: selectedTemplate === tpl.id ? '600' : '500', color: selectedTemplate === tpl.id ? 'hsl(var(--primary))' : 'inherit' }}>{tpl.name}</span>
-                      {selectedTemplate === tpl.id && <CheckCircle size={16} color="hsl(var(--primary))" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ATS Dashboard Card */}
-              <div className="card" style={{ padding: '1.5rem' }}>
-                 <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   <Sparkles size={18} color="hsl(var(--primary))"/> ATS Dashboard
-                 </h3>
-                 
-                 <div style={{ textAlign: 'center', marginBottom: '2rem', position: 'relative' }}>
-                    <svg viewBox="0 0 36 36" className={`circular-chart ${result.atsAnalysis.matchScore >= 80 ? 'success' : result.atsAnalysis.matchScore >= 60 ? 'warning' : 'danger'}`}>
-                      <path className="circle-bg"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                      <path className="circle"
-                        strokeDasharray={`${result.atsAnalysis.matchScore}, 100`}
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                      <text x="18" y="20.35" className="percentage">{result.atsAnalysis.matchScore}%</text>
-                    </svg>
-                    <div style={{ fontSize: '13px', color: 'hsl(var(--text-muted))', marginTop: '0.5rem', fontWeight: '500' }}>Match Score</div>
-                 </div>
-
-                 <div style={{ marginBottom: '1.5rem' }}>
-                   <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'hsl(var(--text-muted))', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Matched Skills</h4>
-                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                     {result.atsAnalysis.matchingSkills.map((skill, i) => <span key={i} className="chip success">{skill}</span>)}
-                   </div>
-                 </div>
-
-                 <div style={{ marginBottom: '1.5rem' }}>
-                   <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'hsl(var(--text-muted))', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Missing Skills</h4>
-                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                     {result.atsAnalysis.missingSkills.map((skill, i) => <span key={i} className="chip danger">{skill}</span>)}
-                   </div>
-                 </div>
-                 
-                 <details style={{ background: 'hsl(var(--bg-app))', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--border-color))' }}>
-                   <summary style={{ fontWeight: '600', cursor: 'pointer', color: 'hsl(var(--primary))', fontSize: '14px' }}>View Suggestions</summary>
-                   <ul style={{ marginTop: '1rem', paddingLeft: '1.2rem', fontSize: '13px', color: 'hsl(var(--text-main))', lineHeight: '1.6' }}>
-                     {result.atsAnalysis.suggestionsForImprovement.map((sug, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{sug}</li>)}
-                   </ul>
-                 </details>
-              </div>
-
-            </div>
-          )}
-
-          {/* Right Canvas */}
-          <div className="workspace-canvas" style={{ display: 'block', overflowX: 'auto', padding: '2rem' }}>
-            {/* Resume Name Editor */}
-            <div className="no-print" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'hsl(var(--bg-card))', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid hsl(var(--border-color))', maxWidth: isEditing ? '100%' : '210mm', margin: isEditing ? '0 0 1.5rem 0' : '0 auto 1.5rem auto' }}>
-              <FileText size={20} color="hsl(var(--primary))" />
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '11px', textTransform: 'uppercase', color: 'hsl(var(--text-muted))', fontWeight: 'bold', letterSpacing: '0.05em' }}>Resume Name</label>
+      <PageTransition style={{ padding: '0 2rem', height: 'calc(100vh - 80px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }} className="no-print">
+           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+             <button className="btn-secondary" onClick={resetForm} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid hsla(0,0%,100%,0.1)' }}>
+               ← IDE Exit
+             </button>
+             <ChevronRight size={16} color="hsl(var(--text-muted))" />
+             <span style={{ fontWeight: '600', color: 'hsl(var(--primary))' }}>Tailoring Workspace</span>
+           </div>
+           
+           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'hsl(var(--bg-card))', padding: '6px 12px', borderRadius: '8px', border: '1px solid hsla(0,0%,100%,0.1)' }}>
+                <FileText size={16} color="hsl(var(--primary))" />
                 <input 
                   type="text" 
                   value={resumeName} 
                   onChange={(e) => setResumeName(e.target.value.replace(/[^a-zA-Z0-9_ -\.]/g, ''))}
-                  style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '16px', fontWeight: '600', color: 'hsl(var(--text-main))', outline: 'none', padding: '2px 0' }}
+                  style={{ width: '200px', border: 'none', background: 'transparent', fontSize: '14px', fontWeight: '600', color: 'hsl(var(--text-main))', outline: 'none' }}
                   placeholder="e.g. Software_Engineer_Resume"
-                  required
                 />
               </div>
-              <Edit3 size={16} color="hsl(var(--text-muted))" />
-            </div>
+              <button className="btn-primary" onClick={handleSaveToProfile} disabled={isSaving} style={{ padding: '8px 24px' }}>
+                {isSaving ? <RefreshCw className="spinner" size={16} /> : <Save size={16} />}
+                {isSaving ? 'Syncing...' : 'Commit to Profile'}
+              </button>
+           </div>
+        </div>
 
-            {isEditing ? (
-              <div style={{ display: 'flex', gap: '2rem', width: '100%', alignItems: 'flex-start' }}>
-                <div style={{ flex: '0 0 500px', display: 'flex', flexDirection: 'column', gap: '1rem' }} className="no-print">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'hsl(var(--bg-card))', padding: '1.5rem', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', border: '1px solid hsl(var(--border-color))' }}>
-                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Edit3 size={20} color="hsl(var(--primary))"/> Editing Resume
-                    </h3>
-                    <button className="btn-secondary" onClick={() => setIsEditing(false)} style={{ padding: '8px 16px', fontSize: '13px' }}>
-                      Close Editor
-                    </button>
+        {saveSuccess && <div className="no-print" style={{ background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', padding: '12px 24px', borderRadius: '8px', marginBottom: '1rem', border: '1px solid hsla(var(--success), 0.3)', display: 'flex', alignItems: 'center', gap: '8px' }}><CheckCircle size={16}/> {saveSuccess}</div>}
+        {error && <div className="no-print auth-error-alert">{error}</div>}
+
+        <div style={{ display: 'flex', gap: '2rem', flex: 1, overflow: 'hidden' }}>
+          
+          {/* Left Panel: Insight & Actions */}
+          <div className="no-print" style={{ width: '380px', display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '8px' }}>
+            
+            {/* ATS Score & Diff Board */}
+            <AnimatedCard style={{ padding: '24px', position: 'relative', overflow: 'hidden', borderTop: '2px solid hsla(var(--primary), 0.5)' }}>
+               <h3 style={{ fontSize: '16px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                 <Target size={18} color="hsl(var(--primary))"/> ATS Diagnostics
+               </h3>
+               
+               <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                 <div style={{ position: 'relative', width: '100px', height: '100px' }}>
+                    <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%' }}>
+                      <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsla(0,0%,100%,0.05)" strokeWidth="3" />
+                      <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeDasharray={`${result.atsAnalysis.matchScore}, 100`} style={{ transition: 'stroke-dasharray 1s ease-out' }} />
+                      <text x="18" y="20.35" fill="hsl(var(--text-main))" fontSize="10" fontWeight="bold" textAnchor="middle">{result.atsAnalysis.matchScore}%</text>
+                    </svg>
+                 </div>
+                 <div style={{ flex: 1 }}>
+                   <div style={{ fontSize: '12px', color: 'hsl(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Missing Vectors</div>
+                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                     {result.atsAnalysis.missingSkills.length ? result.atsAnalysis.missingSkills.map((skill, i) => (
+                       <span key={i} style={{ background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))', border: '1px solid hsla(var(--danger), 0.3)', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: '600' }}>{skill}</span>
+                     )) : <span style={{ color: 'hsl(var(--success))', fontSize: '12px' }}>Perfect Match</span>}
+                   </div>
+                 </div>
+               </div>
+
+               <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid hsla(0,0%,100%,0.05)' }}>
+                 <div style={{ fontSize: '12px', color: 'hsl(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>AI Modifications Made</div>
+                 <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '13px', color: 'hsl(var(--text-main))', lineHeight: '1.6' }}>
+                   {result.atsAnalysis.suggestionsForImprovement.slice(0,3).map((sug, i) => (
+                     <li key={i} style={{ marginBottom: '8px', color: 'hsl(var(--primary))' }}><span style={{ color: 'hsl(var(--text-main))' }}>{sug}</span></li>
+                   ))}
+                 </ul>
+               </div>
+            </AnimatedCard>
+
+            <AnimatedCard style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '14px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                 <Edit3 size={16} color="hsl(var(--warning))"/> Source Editor
+              </h3>
+              <p style={{ fontSize: '13px', color: 'hsl(var(--text-muted))', marginBottom: '16px' }}>Directly modify the AST content. Changes will instantly reflect on the right canvas.</p>
+              <button 
+                onClick={() => setIsEditing(!isEditing)} 
+                style={{ width: '100%', padding: '12px', background: isEditing ? 'hsl(var(--primary))' : 'hsla(0,0%,100%,0.05)', color: isEditing ? '#fff' : 'hsl(var(--text-main))', border: isEditing ? 'none' : '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}
+              >
+                <Edit3 size={16} /> {isEditing ? 'Close Editor Pane' : 'Open JSON Editor Pane'}
+              </button>
+            </AnimatedCard>
+
+            <AnimatedCard style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '14px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                 <LayoutTemplate size={16} color="hsl(var(--success))"/> Render Template
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {templates.map(tpl => (
+                  <div 
+                    key={tpl.id}
+                    onClick={() => setSelectedTemplate(tpl.id)}
+                    style={{
+                      padding: '12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.2s',
+                      background: selectedTemplate === tpl.id ? 'hsla(var(--success), 0.1)' : 'transparent',
+                      border: `1px solid ${selectedTemplate === tpl.id ? 'hsla(var(--success), 0.3)' : 'hsla(0,0%,100%,0.05)'}`
+                    }}
+                  >
+                    <span style={{ fontSize: '14px', fontWeight: selectedTemplate === tpl.id ? '600' : '500', color: selectedTemplate === tpl.id ? 'hsl(var(--success))' : 'hsl(var(--text-main))' }}>{tpl.name}</span>
+                    {selectedTemplate === tpl.id && <CheckSquare size={16} color="hsl(var(--success))" />}
                   </div>
-                  <ResumeEditor data={result} onChange={setResult} />
-                </div>
-                {/* Live Preview scaled down to fit next to editor smoothly */}
-                <div style={{ flex: '1', overflowX: 'auto', paddingBottom: '2rem' }}>
-                  <div className="tailored-resume live-preview" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', boxShadow: 'var(--shadow-lg)', background: '#fff', margin: '0 auto', zoom: 0.85 }}>
-                    <TemplateRenderer templateId={selectedTemplate} data={result} />
-                  </div>
-                </div>
+                ))}
               </div>
-            ) : (
-              <div className="tailored-resume" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', boxShadow: 'var(--shadow-lg)', background: '#fff', margin: '0 auto' }}>
-                <TemplateRenderer templateId={selectedTemplate} data={result} />
+            </AnimatedCard>
+
+            <AnimatedCard style={{ padding: '24px', display: 'flex', gap: '12px' }}>
+              <button className="btn-secondary" onClick={handleDocxDownload} style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: 'auto' }}>
+                <FileText size={20} color="hsl(var(--primary))" />
+                <span style={{ fontSize: '12px' }}>DOCX</span>
+              </button>
+              <button className="btn-secondary" onClick={handlePrint} style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: 'auto' }}>
+                <Printer size={20} color="hsl(var(--primary))" />
+                <span style={{ fontSize: '12px' }}>PDF</span>
+              </button>
+            </AnimatedCard>
+
+          </div>
+
+          {/* Right Panel: Split Editor / Canvas */}
+          <div style={{ flex: 1, display: 'flex', gap: '24px', background: 'hsl(var(--bg-app))', borderRadius: '16px', overflow: 'hidden' }}>
+            {isEditing && (
+              <div className="no-print" style={{ flex: 1, background: 'hsl(var(--bg-card))', borderRight: '1px solid hsla(0,0%,100%,0.05)', overflowY: 'auto', padding: '24px' }}>
+                <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid hsla(0,0%,100%,0.05)' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}><Code size={20} color="hsl(var(--primary))"/> Content AST Editor</h3>
+                </div>
+                <ResumeEditor data={result} onChange={setResult} />
               </div>
             )}
+            
+            <div ref={previewContainerRef} style={{ flex: isEditing ? 1 : 2, background: 'hsl(var(--bg-app))', overflowY: 'auto', overflowX: 'hidden', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', backgroundImage: 'radial-gradient(hsla(0,0%,0%,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px', position: 'relative', padding: '40px 0' }}>
+              <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'top center', transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)', marginBottom: '40px' }}>
+                <div className="tailored-resume live-preview" style={{ width: '794px', minHeight: '1123px', height: 'auto', paddingBottom: '40px', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', background: '#fff', position: 'relative' }}>
+                  <TemplateRenderer templateId={selectedTemplate} data={result} />
+                </div>
+              </div>
+            </div>
           </div>
-          
+
         </div>
-        
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
             body * { visibility: hidden; }
             .tailored-resume, .tailored-resume * { visibility: visible; }
-            .tailored-resume { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; zoom: 1 !important; }
+            .tailored-resume { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; transform: scale(1) !important; margin: 0; }
             .no-print { display: none !important; }
           }
         `}} />
-      </div>
+      </PageTransition>
     );
   }
 
   // -------------------------------------------------------------
-  // RENDER: Pre-Generation (Multi-Step Form)
+  // RENDER: Pre-Generation
   // -------------------------------------------------------------
+  const steps = [
+    { title: "Analyzing Semantic Graph", activeColor: "var(--primary)" },
+    { title: "Aligning Job Description Vectors", activeColor: "var(--primary)" },
+    { title: "Rewriting Bullet Points via LLM", activeColor: "var(--warning)" },
+    { title: "Optimizing ATS Layout", activeColor: "var(--success)" },
+    { title: "Rendering Final Asset", activeColor: "var(--success)" }
+  ];
+
   return (
-    <div className="upload-page animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
-      <div className="page-header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '36px' }}>AI Resume Tailoring</h1>
-        <p className="subtitle">Optimize your resume against a specific job description to maximize ATS compatibility.</p>
+    <PageTransition className="upload-page" style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '4rem' }}>
+      <div className="page-header" style={{ textAlign: 'center', marginBottom: '4rem' }}>
+        <h1 style={{ fontSize: '48px', fontWeight: '800', letterSpacing: '-0.04em', margin: '0 0 16px 0', textShadow: '0 0 40px hsla(var(--primary), 0.3)' }}>
+          AI Resume Compiler
+        </h1>
+        <p className="subtitle" style={{ fontSize: '18px', maxWidth: '600px', margin: '0 auto', color: 'hsl(var(--text-muted))' }}>
+          Configure your build parameters. The AI will rewrite your resume to exactly match the target job description.
+        </p>
       </div>
 
       {error && (
-        <div className="auth-error-alert animate-fade-in">
-          <AlertCircle size={18} />
-          <span>{error}</span>
+        <div className="auth-error-alert animate-fade-in" style={{ justifyContent: 'center' }}>
+          <AlertCircle size={20} />
+          <span style={{ fontWeight: '600' }}>{error}</span>
         </div>
       )}
 
       {loading ? (
-        <div className="step-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4rem 2rem' }}>
-          <div className="loading-sequence">
-            <div className="pulse-sparkle" style={{ transform: 'scale(1.5)' }}>
-              <Sparkles size={48} className="sparkle-icon spinner" color="hsl(var(--primary))" />
-            </div>
-            <h2 style={{ marginTop: '1rem', fontSize: '24px' }}>Tailoring Your Resume</h2>
-            <p className="loading-text">{loadingMessages[loadingStep]}</p>
-            <div style={{ width: '100%', maxWidth: '400px', height: '8px', background: 'hsl(var(--border-color))', borderRadius: '10px', overflow: 'hidden', marginTop: '1rem' }}>
-              <div style={{ width: `${(loadingStep + 1) * 20}%`, height: '100%', background: 'hsl(var(--primary))', transition: 'width 0.5s ease' }} />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit}>
-          
-          {/* Step 1 */}
-          <div className="step-card animate-fade-in">
-            <div className="step-header">
-              <div className="step-number">1</div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '20px' }}>Select Base Resume</h3>
-                <p style={{ color: 'hsl(var(--text-muted))', fontSize: '14px', margin: '4px 0 0 0' }}>Choose a saved resume from your profile or upload a new PDF.</p>
-              </div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: "easeOut" }}
+          style={{ width: '100%', maxWidth: '700px', margin: '0 auto' }}
+        >
+          <AnimatedCard style={{ padding: '0', overflow: 'hidden', border: '1px solid hsla(var(--primary), 0.3)', boxShadow: '0 0 60px hsla(var(--primary), 0.15)' }}>
+            <div style={{ background: 'hsla(0,0%,0%,0.5)', padding: '16px 24px', borderBottom: '1px solid hsla(0,0%,100%,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Zap size={20} color="hsl(var(--primary))" />
+              <span style={{ fontFamily: 'monospace', fontSize: '14px', letterSpacing: '0.1em', color: 'hsl(var(--text-muted))' }}>COMPILER THREAD // RUNNING</span>
             </div>
             
-            <div style={{ padding: '0 0.5rem' }}>
-              {resumesLoading ? (
-                <div className="loading-dropdown-box" style={{ padding: '1rem', background: 'hsl(var(--bg-app))', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', color: 'hsl(var(--text-muted))' }}>
-                  <RefreshCw className="spinner" size={16} /> Loading your resumes...
-                </div>
-              ) : (
-                <div className="resume-selector-wrapper" style={{ marginBottom: '1.5rem' }}>
-                  <select
-                    className="resume-dropdown-select"
-                    style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--border-color))', fontSize: '15px', background: 'hsl(var(--bg-card))', cursor: 'pointer' }}
-                    value={resumeSource === 'upload' ? 'upload' : selectedResumeId}
-                    onChange={(e) => {
-                      if (e.target.value === 'upload') {
-                        setResumeSource('upload');
-                        setSelectedResumeId('');
-                      } else {
-                        setResumeSource('saved');
-                        setSelectedResumeId(e.target.value);
-                      }
-                    }}
-                  >
-                    {savedResumes.map(r => (
-                      <option key={r._id} value={r._id}>💾 {r.filename}</option>
-                    ))}
-                    <option value="upload">➕ Upload a new resume...</option>
-                  </select>
-                </div>
-              )}
+            <div style={{ padding: '40px 32px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {steps.map((step, idx) => {
+                  const isActive = idx === loadingStep;
+                  const isDone = idx < loadingStep;
+                  const isPending = idx > loadingStep;
 
+                  return (
+                    <motion.div key={idx} initial={{ opacity: 0, x: -20 }} animate={{ opacity: isPending ? 0.3 : 1, x: 0 }} transition={{ delay: idx * 0.1 }} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {isDone ? <CheckCircle size={20} color={`hsl(${step.activeColor})`} /> : isActive ? <RefreshCw size={20} className="spinner" color={`hsl(${step.activeColor})`} /> : <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'hsl(var(--border-color))' }} />}
+                      </div>
+                      <span style={{ fontFamily: 'monospace', fontSize: '15px', color: isDone ? `hsl(${step.activeColor})` : isActive ? 'hsl(var(--text-main))' : 'hsl(var(--text-muted))', textShadow: isActive || isDone ? `0 0 10px hsla(${step.activeColor}, 0.5)` : 'none' }}>
+                        {step.title}
+                        {isActive && <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1 }}>...</motion.span>}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </AnimatedCard>
+        </motion.div>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '32px' }}>
+          
+          {/* Base Resume */}
+          <AnimatedCard style={{ padding: '32px' }}>
+            <h3 style={{ fontSize: '18px', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'hsla(var(--primary), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--primary))' }}>1</div>
+              Source Profile Target
+            </h3>
+            
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', background: 'hsla(0,0%,100%,0.03)', padding: '6px', borderRadius: '12px', border: '1px solid hsla(0,0%,100%,0.05)' }}>
+              <button type="button" style={{ flex: 1, padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', background: resumeSource === 'upload' ? 'hsla(var(--primary), 0.2)' : 'transparent', color: resumeSource === 'upload' ? 'hsl(var(--primary))' : 'hsl(var(--text-muted))', border: `1px solid ${resumeSource === 'upload' ? 'hsla(var(--primary), 0.5)' : 'transparent'}`, transition: 'all 0.2s' }} onClick={() => setResumeSource('upload')}>
+                <Upload size={16} style={{ marginRight: '8px' }} /> Local PDF
+              </button>
+              <button type="button" style={{ flex: 1, padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', background: resumeSource === 'saved' ? 'hsla(var(--primary), 0.2)' : 'transparent', color: resumeSource === 'saved' ? 'hsl(var(--primary))' : 'hsl(var(--text-muted))', border: `1px solid ${resumeSource === 'saved' ? 'hsla(var(--primary), 0.5)' : 'transparent'}`, transition: 'all 0.2s' }} onClick={() => setResumeSource('saved')} disabled={savedResumes.length === 0}>
+                <FolderOpen size={16} style={{ marginRight: '8px' }} /> Databank
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait">
               {resumeSource === 'upload' ? (
-                <div 
-                  className={`dropzone-card card ${isDragOver ? 'dragover' : ''} ${file ? 'has-file' : ''}`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={!file ? triggerFileSelect : undefined}
-                  style={{ borderStyle: 'dashed', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', borderColor: isDragOver ? 'hsl(var(--primary))' : 'hsl(var(--border-color))', background: isDragOver ? 'hsl(var(--primary-light))' : 'hsl(var(--bg-app))' }}
-                >
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" style={{ display: 'none' }} />
-                  {file ? (
-                    <div className="file-info-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                      <FileText size={48} color="hsl(var(--primary))" />
-                      <div className="file-meta">
-                        <p style={{ fontWeight: '600', fontSize: '16px' }}>{file.name}</p>
-                        <p style={{ color: 'hsl(var(--text-muted))', fontSize: '13px' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                <motion.div key="upload" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <div 
+                    style={{ height: '200px', borderRadius: 'var(--radius-lg)', border: `2px dashed ${isDragOver ? 'hsl(var(--primary))' : file ? 'hsl(var(--success))' : 'hsla(0,0%,100%,0.1)'}`, background: isDragOver ? 'hsla(var(--primary), 0.05)' : file ? 'hsla(var(--success), 0.05)' : 'hsla(0,0%,100%,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}
+                    onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={!file ? triggerFileSelect : undefined}
+                  >
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf" style={{ display: 'none' }} />
+                    {file ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', zIndex: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          <CheckCircle size={32} color="hsl(var(--success))" />
+                          <div>
+                            <p style={{ margin: 0, color: 'hsl(var(--text-main))', fontWeight: '600', fontSize: '16px' }}>{file.name}</p>
+                            <p style={{ margin: '4px 0 0 0', color: 'hsl(var(--text-muted))', fontSize: '13px' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={removeFile} style={{ padding: '6px 16px', background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))', border: '1px solid hsla(var(--danger), 0.3)', borderRadius: '100px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>Eject Payload</button>
                       </div>
-                      <button type="button" className="btn-secondary" onClick={(e) => { e.stopPropagation(); removeFile(); }} style={{ marginTop: '0.5rem' }}>
-                        Remove File
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="dropzone-prompt" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1rem 0' }}>
-                      <Upload size={48} color="hsl(var(--text-muted))" />
-                      <div>
-                        <h4 style={{ fontSize: '16px', marginBottom: '0.25rem' }}>Drag & Drop Resume PDF</h4>
-                        <p style={{ color: 'hsl(var(--text-muted))', fontSize: '14px' }}>or click to browse local files (max 10MB)</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', zIndex: 10 }}>
+                        <Upload size={32} color="hsl(var(--primary))" />
+                        <h4 style={{ margin: 0, fontSize: '16px' }}>Initiate Drop Sequence</h4>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="saved-resume-selected-card card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'hsl(var(--bg-app))', border: '1px solid hsl(var(--border-color))' }}>
-                  <FolderOpen size={32} color="hsl(var(--primary))" />
-                  <div className="selected-info">
-                    <h4 style={{ fontSize: '15px' }}>Saved Resume Selected</h4>
-                    <p style={{ color: 'hsl(var(--text-muted))', fontSize: '13px' }}>Using stored resume data from your Profile. No upload required.</p>
+                    )}
                   </div>
-                </div>
+                </motion.div>
+              ) : (
+                <motion.div key="saved" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <select value={selectedResumeId} onChange={(e) => setSelectedResumeId(e.target.value)} style={{ width: '100%', padding: '20px', borderRadius: '12px', background: 'hsla(0,0%,100%,0.03)', border: '1px solid hsla(0,0%,100%,0.1)', color: 'hsl(var(--text-main))', fontSize: '15px', outline: 'none', cursor: 'pointer' }}>
+                    {savedResumes.map(r => <option key={r._id} value={r._id} style={{ background: 'hsl(var(--bg-app))' }}>[{r.filename}] - Uploaded {new Date(r.uploadedAt).toLocaleDateString()}</option>)}
+                  </select>
+                </motion.div>
               )}
-            </div>
-          </div>
+            </AnimatePresence>
+          </AnimatedCard>
 
-          {/* Step 2 */}
-          <div className="step-card animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <div className="step-header">
-              <div className="step-number">2</div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '20px' }}>Target Job Description</h3>
-                <p style={{ color: 'hsl(var(--text-muted))', fontSize: '14px', margin: '4px 0 0 0' }}>Paste the full job description to optimize for keywords.</p>
-              </div>
-            </div>
-            <div style={{ padding: '0 0.5rem' }}>
-              <textarea
-                rows={8}
-                placeholder="Example: We are looking for a Software Engineer with strong experience in React, Node.js, and MongoDB..."
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--border-color))', fontSize: '15px', fontFamily: 'inherit', lineHeight: '1.5', resize: 'vertical' }}
-                required
-              />
-              <div style={{ textAlign: 'right', fontSize: '12px', color: 'hsl(var(--text-muted))', marginTop: '0.5rem' }}>
-                {jobDescription.length} characters
-              </div>
-            </div>
-          </div>
+          {/* Job Description */}
+          <AnimatedCard style={{ padding: '32px' }}>
+            <h3 style={{ fontSize: '18px', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'hsla(var(--primary), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--primary))' }}>2</div>
+              Job Description Injection
+            </h3>
+            <textarea
+              rows={6}
+              placeholder="Inject raw job description here to optimize vectors..."
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              required
+              style={{ width: '100%', background: 'hsla(0,0%,100%,0.02)', border: '1px solid hsla(0,0%,100%,0.05)', borderRadius: '12px', padding: '20px', color: 'hsl(var(--text-main))', fontSize: '15px', resize: 'none', lineHeight: '1.6', outline: 'none' }}
+            />
+          </AnimatedCard>
 
-          {/* Step 3 */}
-          <div className="step-card animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="step-header">
-              <div className="step-number">3</div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '20px' }}>Select Visual Template</h3>
-                <p style={{ color: 'hsl(var(--text-muted))', fontSize: '14px', margin: '4px 0 0 0' }}>Choose how your tailored resume will be formatted.</p>
-              </div>
-            </div>
-            <div className="template-grid" style={{ padding: '0 0.5rem' }}>
+          {/* Templates */}
+          <AnimatedCard style={{ padding: '32px' }}>
+            <h3 style={{ fontSize: '18px', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'hsla(var(--primary), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--primary))' }}>3</div>
+              Output Render Schematic
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
               {templates.map(tpl => (
                 <div 
                   key={tpl.id}
                   onClick={() => setSelectedTemplate(tpl.id)}
-                  className={`template-card ${selectedTemplate === tpl.id ? 'selected' : ''}`}
+                  style={{ padding: '20px', borderRadius: '12px', border: `2px solid ${selectedTemplate === tpl.id ? 'hsl(var(--primary))' : 'hsla(0,0%,100%,0.05)'}`, background: selectedTemplate === tpl.id ? 'hsla(var(--primary), 0.05)' : 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'all 0.2s' }}
                 >
-                  <LayoutTemplate size={32} className="template-icon" />
-                  <h4 style={{ fontSize: '15px', marginBottom: '0.5rem', color: selectedTemplate === tpl.id ? 'hsl(var(--primary))' : 'inherit' }}>{tpl.name}</h4>
-                  <p style={{ fontSize: '12px', color: 'hsl(var(--text-muted))', margin: 0 }}>{tpl.desc}</p>
+                  <LayoutTemplate size={24} color={selectedTemplate === tpl.id ? 'hsl(var(--primary))' : 'hsl(var(--text-muted))'} />
+                  <div>
+                    <h4 style={{ fontSize: '15px', margin: '0 0 4px 0', color: selectedTemplate === tpl.id ? 'hsl(var(--primary))' : 'inherit' }}>{tpl.name}</h4>
+                    <p style={{ fontSize: '12px', color: 'hsl(var(--text-muted))', margin: 0, lineHeight: '1.4' }}>{tpl.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </AnimatedCard>
 
-          {/* Final CTA */}
-          <div style={{ textAlign: 'center', marginTop: '3rem' }} className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
-             <button type="submit" className="btn-primary" style={{ padding: '1rem 3rem', fontSize: '1.1rem', borderRadius: '30px', boxShadow: 'var(--shadow-md)' }} disabled={isSubmitDisabled() || loading}>
-               <Sparkles size={20} /> Generate Tailored Resume
-             </button>
-          </div>
+          <button 
+            type="submit" 
+            className="btn-primary" 
+            disabled={isSubmitDisabled() || loading}
+            style={{ width: '100%', padding: '24px', fontSize: '18px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '16px' }}
+          >
+            <Zap size={24} /> Compile Tailored Resume
+          </button>
         </form>
       )}
-    </div>
+    </PageTransition>
   );
 }

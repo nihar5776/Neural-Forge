@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import Lenis from 'lenis';
+import AnimatedBackground from './components/AnimatedBackground';
 import { api } from './utils/api';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -22,8 +25,33 @@ import AdminExport from './pages/admin/AdminExport';
 export default function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Initialize Lenis Smooth Scrolling Engine
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Apple-like ease
+      direction: 'vertical',
+      gestureDirection: 'vertical',
+      smooth: true,
+      mouseMultiplier: 1,
+      smoothTouch: false,
+      touchMultiplier: 2,
+      infinite: false,
+    });
+
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+
+    requestAnimationFrame(raf);
+
+    return () => lenis.destroy();
+  }, []);
 
   // Validate session on mount
   useEffect(() => {
@@ -59,12 +87,16 @@ export default function App() {
     sessionStorage.removeItem('token');
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => !prev);
+  };
+
   if (!authChecked) {
     return (
       <div className="app-splash-loader">
         <div className="splash-card">
-          <div className="logo-accent spinner">VG</div>
-          <h2>VidyaGuide</h2>
+          <div className="logo-accent spinner">NF</div>
+          <h2>Neural Forge</h2>
           <p>Initializing your career path...</p>
         </div>
       </div>
@@ -74,19 +106,24 @@ export default function App() {
   // Handle routing guards
   if (!user) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <div className="app-container">
+        <AnimatedBackground />
+        <Routes>
+          <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </div>
     );
   }
 
   return (
     <div className="app-container">
-      <Sidebar user={user} onLogoutSuccess={handleLogoutSuccess} />
-      <main className="main-content">
-        <Routes>
+      <AnimatedBackground />
+      <Sidebar user={user} onLogoutSuccess={handleLogoutSuccess} isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+      <main className={`main-content ${isSidebarOpen ? '' : 'sidebar-closed'}`}>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
           {user?.role === 'admin' ? (
             <>
               <Route path="/" element={<AdminDashboard />} />
@@ -109,7 +146,8 @@ export default function App() {
           )}
 
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          </Routes>
+        </AnimatePresence>
       </main>
     </div>
   );

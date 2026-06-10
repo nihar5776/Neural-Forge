@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Briefcase, ExternalLink, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { PageTransition, AnimatedCard, StaggerContainer, StaggerItem, NeuralDecodeText, MagneticButton } from '../components/MotionWrappers';
 
 export default function JobSearch() {
   const [jobRole, setJobRole] = useState('');
@@ -88,14 +89,16 @@ export default function JobSearch() {
   };
 
   return (
-    <div className="job-search-page animate-fade-in">
-      <div className="page-header">
-        <h1>Agentic Job Finder</h1>
-        <p className="subtitle">Our AI Agent crawls live openings on LinkedIn and Shine.com directly matching your target role</p>
+    <PageTransition className="job-search-page" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '4rem' }}>
+      <div className="page-header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+        <h1 style={{ fontSize: '48px', fontWeight: '800', letterSpacing: '-0.04em', margin: '0 0 16px 0', textShadow: '0 0 40px hsla(var(--primary), 0.3)' }}>
+          <NeuralDecodeText text="Agentic Job Finder" />
+        </h1>
+        <p className="subtitle" style={{ fontSize: '18px', maxWidth: '600px', margin: '0 auto', color: 'hsl(var(--text-muted))' }}>Our AI Agent crawls live openings on LinkedIn and Shine.com directly matching your target role</p>
       </div>
 
-      <div className="search-bar-card card">
-        <form onSubmit={handleSearch} className="search-form">
+      <AnimatedCard className="search-bar-card" style={{ padding: '32px', marginBottom: '32px' }}>
+        <form onSubmit={handleSearch} className="search-form" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
           <div className="search-input-wrapper">
             <Search className="search-icon" size={20} />
             <input
@@ -106,27 +109,28 @@ export default function JobSearch() {
               required
             />
           </div>
-          <div className="location-input-wrapper">
-            <MapPin className="location-icon" size={20} />
+          <div className="location-input-wrapper" style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+            <MapPin className="location-icon" size={20} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--text-muted))' }} />
             <input
               type="text"
               placeholder="Location (e.g. India, Remote, London)..."
               value={location}
               onChange={(e) => setLocation(e.target.value)}
+              style={{ width: '100%', padding: '16px 16px 16px 48px', borderRadius: '12px', background: 'hsla(0,0%,100%,0.02)', border: '1px solid hsla(0,0%,100%,0.05)', color: 'hsl(var(--text-main))', fontSize: '15px', outline: 'none' }}
             />
           </div>
-          <button type="submit" className="btn-primary search-submit-btn" disabled={loading || !jobRole.trim()}>
+          <MagneticButton type="submit" className="btn-primary search-submit-btn" disabled={loading || !jobRole.trim()} style={{ padding: '0 32px', borderRadius: '12px', height: '54px', fontWeight: '800' }}>
             {loading ? (
-              <>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <RefreshCw className="spinner" size={18} />
                 Searching...
-              </>
+              </span>
             ) : (
               'Find Live Openings'
             )}
-          </button>
+          </MagneticButton>
         </form>
-      </div>
+      </AnimatedCard>
 
       {error && (
         <div className="auth-error-alert search-alert-spacing">
@@ -136,8 +140,8 @@ export default function JobSearch() {
       )}
 
       {loading ? (
-        <div className="loading-card card">
-          <div className="loading-content">
+        <AnimatedCard style={{ padding: '60px', textAlign: 'center', background: 'linear-gradient(180deg, hsla(250, 10%, 8%, 0.8) 0%, hsla(250, 10%, 4%, 0.9) 100%)', border: '1px solid hsla(var(--primary), 0.2)' }}>
+          <div className="loading-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
             <div className="pulse-sparkle">
               <Sparkles size={36} className="sparkle-icon spinner" />
             </div>
@@ -145,13 +149,13 @@ export default function JobSearch() {
             <p className="job-agent-searching-hint">
               Querying live index. Web-scraping public channels on LinkedIn and Shine matching "{searchedRole}" {searchedLocation && `in "${searchedLocation}"`}.
             </p>
-            <div className="search-status-bar">
+            <div className="search-status-bar" style={{ width: '100%', maxWidth: '400px', height: '4px', background: 'hsla(0,0%,100%,0.05)', borderRadius: '100px', overflow: 'hidden' }}>
               <div className="status-progress-track">
-                <div className="status-progress-fill"></div>
+                <div className="status-progress-fill" style={{ width: '50%', height: '100%', background: 'hsl(var(--primary))', animation: 'pulse 1s infinite alternate' }}></div>
               </div>
             </div>
           </div>
-        </div>
+        </AnimatedCard>
       ) : jobsList.length > 0 ? (
         <div className="results-container animate-fade-in search-results-box">
           <div className="results-info-row">
@@ -284,6 +288,6 @@ export default function JobSearch() {
           </div>
         )}
       </div>
-    </div>
+    </PageTransition>
   );
 }
