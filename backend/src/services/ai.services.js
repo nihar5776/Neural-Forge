@@ -135,6 +135,13 @@ ${jobDescription}
     console.log(response.text);
 
     const parsedResponse = JSON.parse(response.text);
+    // Normalize severity to lowercase — AI sometimes returns "High"/"Medium"/"Low"
+    if (Array.isArray(parsedResponse.skillGaps)) {
+      parsedResponse.skillGaps = parsedResponse.skillGaps.map(gap => ({
+        ...gap,
+        severity: typeof gap.severity === 'string' ? gap.severity.toLowerCase() : gap.severity
+      }));
+    }
     const validatedResponse =
       interviewReportSchema.parse(parsedResponse);
 

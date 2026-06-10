@@ -59,7 +59,17 @@ export default function App() {
 
   const handleLogoutSuccess = () => {
     setUser(null);
+    // Clear auth token
     sessionStorage.removeItem('token');
+    // Clear all feature session data so the next user starts fresh
+    const featureKeys = [
+      'resume_upload_session',
+      'tailor_resume_session',
+      'job_search_session',
+      'quiz_session',
+      'mock_interview_session',
+    ];
+    featureKeys.forEach(key => sessionStorage.removeItem(key));
   };
 
   if (!authChecked) {
