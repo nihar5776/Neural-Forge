@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import Quiz from './pages/Quiz';
 import MockInterview from './pages/MockInterview';
 import TailorResume from './pages/TailorResume';
+import GamificationEngine from './components/GamificationEngine';
 
 // Admin Views
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -18,6 +19,87 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminHealth from './pages/admin/AdminHealth';
 import AdminExport from './pages/admin/AdminExport';
+
+// Authenticated layout wrapper forwarding XP stats to the Sidebar
+function AppLayout({ user, handleLogoutSuccess, xp, level, xpNeeded, classNameTitle }) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  return (
+    <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      {/* Floating Toggle Button to OPEN sidebar (only visible when collapsed) */}
+      {isSidebarCollapsed && (
+        <button 
+          onClick={() => setIsSidebarCollapsed(false)}
+          className="sidebar-toggle-open"
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '16px',
+            zIndex: 99,
+            background: '#fbd000',
+            border: '3px solid #000000',
+            color: '#000000',
+            padding: '8px 12px',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            fontFamily: 'monospace',
+            boxShadow: '2px 2px 0px #000000',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#e52521';
+            e.currentTarget.style.color = '#ffffff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#fbd000';
+            e.currentTarget.style.color = '#000000';
+          }}
+        >
+          <span>▶</span> OPEN MENU
+        </button>
+      )}
+
+      <Sidebar 
+        user={user} 
+        onLogoutSuccess={handleLogoutSuccess} 
+        xp={xp} 
+        level={level} 
+        xpNeeded={xpNeeded} 
+        classNameTitle={classNameTitle} 
+        onToggleCollapse={() => setIsSidebarCollapsed(true)}
+      />
+      <main className="main-content animate-fade-in">
+        <Routes>
+          {user?.role === 'admin' ? (
+            <>
+              <Route path="/" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers currentUser={user} />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/admin/health" element={<AdminHealth />} />
+              <Route path="/admin/export" element={<AdminExport />} />
+              <Route path="/profile" element={<Profile />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/upload" element={<ResumeUpload />} />
+              <Route path="/tailor" element={<TailorResume />} />
+              <Route path="/jobs" element={<JobSearch />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/quiz" element={<Quiz />} />
+              <Route path="/dashboard/mock-interview" element={<MockInterview />} />
+            </>
+          )}
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -63,8 +145,8 @@ export default function App() {
     return (
       <div className="app-splash-loader">
         <div className="splash-card">
-          <div className="logo-accent spinner">VG</div>
-          <h2>VidyaGuide</h2>
+          <div className="logo-accent spinner" style={{ background: '#e52521', border: '2.5px solid #000' }}>NF</div>
+          <h2>Neural Forge</h2>
           <p>Initializing your career path...</p>
         </div>
       </div>
@@ -74,43 +156,19 @@ export default function App() {
   // Handle routing guards
   if (!user) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <GamificationEngine>
+        <Routes>
+          <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </GamificationEngine>
     );
   }
 
   return (
-    <div className="app-container">
-      <Sidebar user={user} onLogoutSuccess={handleLogoutSuccess} />
-      <main className="main-content">
-        <Routes>
-          {user?.role === 'admin' ? (
-            <>
-              <Route path="/" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers currentUser={user} />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/health" element={<AdminHealth />} />
-              <Route path="/admin/export" element={<AdminExport />} />
-              <Route path="/profile" element={<Profile />} />
-            </>
-          ) : (
-            <>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/upload" element={<ResumeUpload />} />
-              <Route path="/tailor" element={<TailorResume />} />
-              <Route path="/jobs" element={<JobSearch />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/quiz" element={<Quiz />} />
-              <Route path="/dashboard/mock-interview" element={<MockInterview />} />
-            </>
-          )}
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-    </div>
+    <GamificationEngine>
+      <AppLayout user={user} handleLogoutSuccess={handleLogoutSuccess} />
+    </GamificationEngine>
   );
 }

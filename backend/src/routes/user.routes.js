@@ -16,4 +16,7 @@ router.get("/profile/login-history", authmiddleware.authUser, userController.get
 router.get("/profile/active-sessions", authmiddleware.authUser, userController.getActiveSessions);
 router.post("/profile/active-sessions/revoke", authmiddleware.authUser, userController.revokeSession);
 
+// UI Theme Preference Route
+router.put("/profile/ui-theme", authmiddleware.authUser, userController.updateUITheme);
+
 module.exports = router

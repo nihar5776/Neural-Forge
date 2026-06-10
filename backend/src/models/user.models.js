@@ -47,6 +47,14 @@ const userSchema = new mongoose.Schema(
         enum: ["active", "suspended"],
         default: "active"
     },
+
+    preferences: {
+        uiTheme: {
+            type: String,
+            enum: ['default', 'cyberpunk'],
+            default: 'default'
+        }
+    },
     },
     {
        timestamps: true  

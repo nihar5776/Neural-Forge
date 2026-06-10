@@ -1,15 +1,15 @@
 /* Admin Dashboard & Telemetry Stylesheet */
 
 :root {
-  --admin-primary: hsl(221.2, 83.2%, 53.3%);
-  --admin-sidebar-bg: #1e293b;
-  --admin-card-bg: #ffffff;
-  --admin-border: #e2e8f0;
-  --admin-bg-light: #f8fafc;
-  --admin-text-dark: #0f172a;
-  --admin-text-muted: #64748b;
-  --admin-success: #10b981;
-  --admin-danger: #ef4444;
+  --admin-primary: hsl(1, 80%, 51%);   /* Mario Red */
+  --admin-sidebar-bg: #5c94fc;          /* NES Sky Blue */
+  --admin-card-bg: #ffffff;             /* White card */
+  --admin-border: #000000;              /* Solid Black */
+  --admin-bg-light: #e0f8ff;            /* Sky Blue highlight */
+  --admin-text-dark: #000000;           /* Solid Black text */
+  --admin-text-muted: #404040;          /* Dark gray text */
+  --admin-success: #43b047;
+  --admin-danger: #e52521;
   --admin-warning: #f59e0b;
 }
 

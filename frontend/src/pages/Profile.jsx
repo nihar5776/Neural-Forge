@@ -7,6 +7,7 @@ import {
 import '../admin.css';
 
 export default function Profile() {
+
   const [resumes, setResumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -33,6 +34,7 @@ export default function Profile() {
   // Sessions and History states
   const [activeSessions, setActiveSessions] = useState([]);
   const [loginHistory, setLoginHistory] = useState([]);
+
 
   const fetchUserData = async () => {
     try {
@@ -487,6 +489,8 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+
 
       {/* Grid for Security Auditing (Active Sessions & Login History) */}
       <div className="charts-grid animate-fade-in" style={{ marginTop: '24px' }}>

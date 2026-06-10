@@ -172,7 +172,8 @@ async function getUserController(req, res) {
             id: user._id, 
             name: user.name,
             email: user.email,
-            role: user.role
+            role: user.role,
+            preferences: user.preferences || { uiTheme: 'default' }
         } 
     });
 }
@@ -357,6 +358,47 @@ async function revokeSession(req, res) {
     }
 }
 
+async function updateUITheme(req, res) {
+    try {
+        const userId = req.user.userId || req.user.id;
+        const { uiTheme } = req.body;
+
+        const allowedThemes = ['default', 'cyberpunk'];
+        if (!uiTheme || !allowedThemes.includes(uiTheme)) {
+            return res.status(400).json({
+                status: "Failed",
+                message: `Invalid uiTheme value. Allowed values: ${allowedThemes.join(', ')}.`
+            });
+        }
+
+        const updatedUser = await userModel.findByIdAndUpdate(
+            userId,
+            { 'preferences.uiTheme': uiTheme },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                status: "Failed",
+                message: "User account not found."
+            });
+        }
+
+        return res.status(200).json({
+            status: "Success",
+            message: "UI theme preference updated successfully.",
+            uiTheme: updatedUser.preferences?.uiTheme || 'default'
+        });
+    } catch (error) {
+        console.error("Update UI Theme Error:", error);
+        return res.status(500).json({
+            status: "Failed",
+            message: "Failed to update UI theme preference.",
+            error: error.message
+        });
+    }
+}
+
 module.exports = {
     userRegisterController,
     userloginController,
@@ -366,5 +408,6 @@ module.exports = {
     changePassword,
     getLoginHistory,
     getActiveSessions,
-    revokeSession
+    revokeSession,
+    updateUITheme
 };

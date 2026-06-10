@@ -114,63 +114,151 @@ export default function Dashboard() {
       </div>
 
       <div className="history-section">
-        <h3>Coaching & Analysis History</h3>
-        
-        {loading ? (
-          <div className="loading-state-box">
-            <RefreshCw className="spinner" size={32} />
-            <p>Loading your career history...</p>
-          </div>
-        ) : reports.length === 0 ? (
-          <div className="empty-state-card card">
-            <FileText size={48} className="empty-icon" />
-            <h4>No reports generated yet</h4>
-            <p>Upload your resume and enter a target job description to get a full gap analysis and coaching roadmap.</p>
-            <Link to="/upload" className="btn-primary">
-              Analyze Your Resume Now
-            </Link>
-          </div>
-        ) : (
-          <div className="reports-history-list">
-            {reports.map((report) => (
-              <div 
-                key={report._id} 
-                className="report-history-row card stagger-item"
-                onClick={() => setSelectedReport(report)}
-              >
-                <div className="report-row-main">
-                  <div className="report-row-info">
-                    <span className="report-row-date">
-                      <Calendar size={14} />
-                      {formatDate(report.createdAt)}
-                    </span>
-                    <h4>{report.title || 'Career Profile Assessment'}</h4>
-                    <p className="report-row-jd">
-                      <Briefcase size={14} />
-                      {report.jobDescription ? (
-                        report.jobDescription.length > 60 
-                          ? `${report.jobDescription.substring(0, 60)}...` 
-                          : report.jobDescription
-                      ) : 'General Profile'}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="report-row-actions">
-                  <div className="report-row-score">
-                    <span className="score-lbl">Match</span>
-                    <span className="score-val">{report.matchScore}%</span>
-                  </div>
-                  <button className="view-report-inline-btn" title="View Full Report">
-                    <Eye size={18} />
-                    <span>View</span>
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
+        {/* Repeating brick outer wrapper */}
+        <div style={{
+          background: 'repeating-linear-gradient(90deg, #b03a00, #b03a00 24px, #000000 24px, #000000 26px), repeating-linear-gradient(0deg, #b03a00, #b03a00 16px, #000000 16px, #000000 18px)',
+          border: '3px solid #000000',
+          padding: '16px',
+          boxShadow: '8px 8px 0px #000000',
+          marginTop: '24px'
+        }}>
+          {/* Black panel with yellowish brick border */}
+          <div style={{
+            background: '#000000',
+            border: '6px double #fbd000', // Yellow retro double border
+            padding: '24px 16px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+          }}>
+            {/* Header: SUPER PLAYER'S with animated Mario / Luigi SVGs */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+              {/* Mario 8-bit SVG */}
+              <svg width="28" height="28" viewBox="0 0 12 12" style={{ transform: 'scaleX(-1)' }}>
+                <rect x="3" y="1" width="6" height="2" fill="#e52521"/>
+                <rect x="4" y="2" width="7" height="1" fill="#e52521"/>
+                <rect x="4" y="3" width="5" height="3" fill="#fcb494"/>
+                <rect x="3" y="4" width="1" height="2" fill="#fcb494"/>
+                <rect x="7" y="3" width="1" height="1" fill="#000"/>
+                <rect x="6" y="4" width="3" height="1" fill="#4a2306"/>
+                <rect x="3" y="6" width="6" height="4" fill="#e52521"/>
+                <rect x="4" y="6" width="4" height="4" fill="#002fbe"/>
+                <rect x="2" y="7" width="1" height="2" fill="#e52521"/>
+                <rect x="9" y="7" width="1" height="2" fill="#e52521"/>
+              </svg>
+
+              <h3 style={{
+                fontFamily: 'monospace',
+                fontWeight: '900',
+                fontSize: '22px',
+                color: '#ffffff',
+                textTransform: 'uppercase',
+                letterSpacing: '2px',
+                margin: 0,
+                textShadow: '3px 3px 0px #000000',
+                WebkitTextStroke: '0.5px #000'
+              }}>
+                SUPER PLAYER'S
+              </h3>
+
+              {/* Luigi 8-bit SVG */}
+              <svg width="28" height="28" viewBox="0 0 12 12">
+                <rect x="3" y="1" width="6" height="2" fill="#43b047"/>
+                <rect x="4" y="2" width="7" height="1" fill="#43b047"/>
+                <rect x="4" y="3" width="5" height="3" fill="#fcb494"/>
+                <rect x="3" y="4" width="1" height="2" fill="#fcb494"/>
+                <rect x="7" y="3" width="1" height="1" fill="#000"/>
+                <rect x="6" y="4" width="3" height="1" fill="#4a2306"/>
+                <rect x="3" y="6" width="6" height="4" fill="#43b047"/>
+                <rect x="4" y="6" width="4" height="4" fill="#002fbe"/>
+                <rect x="2" y="7" width="1" height="2" fill="#43b047"/>
+                <rect x="9" y="7" width="1" height="2" fill="#43b047"/>
+              </svg>
+            </div>
+
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0', gap: '12px' }}>
+                <RefreshCw className="spinner" size={28} style={{ color: '#fbd000' }} />
+                <p style={{ color: '#fff', fontSize: '13px' }}>LOADING GAME RECORDS...</p>
               </div>
-            ))}
+            ) : reports.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 10px' }}>
+                <p style={{ color: '#fbd000', fontSize: '16px', fontWeight: 'bold', marginBottom: '16px' }}>NO SCORE ENTRIES YET</p>
+                <p style={{ fontSize: '12px', color: '#ccc', marginBottom: '20px' }}>Upload a resume to set your first score on the high score board!</p>
+                <Link to="/upload" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                  Forge First Score
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {reports.slice(0, 10).map((report, index) => {
+                  const rank = index + 1;
+                  // Color highlights: Green for top 3, white/grey for lower ranks
+                  const rankColor = rank <= 3 ? '#43b047' : '#ffffff';
+                  const nameColor = rank <= 3 ? '#43b047' : '#ffffff';
+                  const stageColor = '#00f0ff'; // cyan/blue stage
+                  const scoreColor = '#ffffff'; // white scores
+
+                  const getStageName = (score) => {
+                    if (score >= 90) return '8W-4';
+                    if (score >= 80) return '6W-1';
+                    if (score >= 70) return '5W-4';
+                    if (score >= 60) return '3W-4';
+                    if (score >= 50) return '2W-1';
+                    return '1W-1';
+                  };
+
+                  // Clean title to simulate a 3-letter or 8-letter candidate tag
+                  const candidateTag = report.title 
+                    ? report.title.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase().padEnd(8, ' ')
+                    : 'RESUME  ';
+
+                  return (
+                    <div 
+                      key={report._id}
+                      onClick={() => setSelectedReport(report)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        background: 'transparent',
+                        borderBottom: '1px dashed #333333',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#222222';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      {/* Left: Rank & Candidate tag */}
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <span style={{ color: rankColor, width: '28px', fontSize: '15px' }}>
+                          {String(rank).padEnd(2, ' ')}
+                        </span>
+                        <span style={{ color: nameColor, fontSize: '15px', letterSpacing: '1px' }}>
+                          {candidateTag}
+                        </span>
+                      </div>
+                      
+                      {/* Right: Stage & Score */}
+                      <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
+                        <span style={{ color: stageColor, fontSize: '15px', letterSpacing: '1px' }}>
+                          {getStageName(report.matchScore)}
+                        </span>
+                        <span style={{ color: scoreColor, fontSize: '15px', letterSpacing: '1px' }}>
+                          {String((report.matchScore || 0) * 1000).padStart(6, '0')} ({report.matchScore || 0}%)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

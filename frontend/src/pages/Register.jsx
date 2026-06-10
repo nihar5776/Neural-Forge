@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Lock, Mail, User, AlertCircle, Loader } from 'lucide-react';
+import MarioEducationBackground from '../components/MarioEducationBackground';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -105,12 +106,57 @@ export default function Register() {
   };
 
   return (
-    <div className="auth-page animate-fade-in">
+    <MarioEducationBackground>
+      {/* NES-style Super Mario Bros start logo box for Neural Forge */}
+      <div className="retro-mario-logo" style={{
+        background: '#c84c0c',
+        border: '4px solid #000000',
+        boxShadow: '6px 6px 0px #000000',
+        padding: '10px 20px',
+        textAlign: 'center',
+        marginBottom: '20px',
+        display: 'inline-block',
+        alignSelf: 'center',
+        zIndex: 10
+      }}>
+        <div style={{
+          fontSize: '11px',
+          color: '#fcb494',
+          fontWeight: 'bold',
+          fontFamily: 'monospace',
+          letterSpacing: '2px',
+          textShadow: '1.5px 1.5px 0px #000000',
+          marginBottom: '2px'
+        }}>
+          SUPER
+        </div>
+        <div style={{
+          fontSize: '24px',
+          color: '#ffffff',
+          fontWeight: '900',
+          fontFamily: 'var(--font-heading)',
+          letterSpacing: '1px',
+          textShadow: '3px 3px 0px #000000',
+          WebkitTextStroke: '0.5px #000000'
+        }}>
+          NEURAL FORGE.
+        </div>
+        <div style={{
+          fontSize: '8px',
+          color: '#ffffff',
+          fontFamily: 'monospace',
+          marginTop: '2px',
+          letterSpacing: '1px'
+        }}>
+          ©2026 NEURAL FORGE
+        </div>
+      </div>
+
       <div className="auth-card card">
         <div className="auth-header">
-          <div className="logo-accent">VG</div>
+          <div className="logo-accent" style={{ background: '#e52521', border: '2.5px solid #000' }}>NF</div>
           <h2>Create Account</h2>
-          <p className="auth-subtitle">Join VidyaGuide to get personalized resume coaching and real job matches</p>
+          <p className="auth-subtitle">Join Neural Forge to get personalized resume coaching and real job matches</p>
         </div>
 
         {error && (
@@ -220,6 +266,6 @@ export default function Register() {
           </p>
         </div>
       </div>
-    </div>
+    </MarioEducationBackground>
   );
 }

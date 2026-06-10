@@ -160,105 +160,162 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="kpi-grid animate-fade-in">
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-blue">
-            <Users size={22} />
-          </div>
-          <div className="kpi-title">Total Accounts</div>
-          <div className="kpi-value">{totalUsers}</div>
-          <div className="kpi-footer">
-            <TrendingUp size={14} style={{ color: 'var(--admin-success)' }} />
-            <span style={{ color: 'var(--admin-success)', fontWeight: 600 }}>+{newUsersThisWeek}</span>
-            <span>registered this week</span>
+      {/* KPI Scoreboards Grid */}
+      <div className="animate-fade-in" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+        gap: '24px',
+        marginBottom: '28px'
+      }}>
+        {/* Board 1: User Metrics */}
+        <div style={{
+          background: 'repeating-linear-gradient(90deg, #b03a00, #b03a00 24px, #000000 24px, #000000 26px), repeating-linear-gradient(0deg, #b03a00, #b03a00 16px, #000000 16px, #000000 18px)',
+          border: '3px solid #000000',
+          padding: '12px',
+          boxShadow: '6px 6px 0px #000000'
+        }}>
+          <div style={{
+            background: '#000000',
+            border: '6px double #fbd000',
+            padding: '20px 16px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <svg width="24" height="24" viewBox="0 0 12 12" style={{ transform: 'scaleX(-1)' }}>
+                <rect x="3" y="1" width="6" height="2" fill="#e52521"/>
+                <rect x="4" y="2" width="7" height="1" fill="#e52521"/>
+                <rect x="4" y="3" width="5" height="3" fill="#fcb494"/>
+                <rect x="3" y="4" width="1" height="2" fill="#fcb494"/>
+                <rect x="7" y="3" width="1" height="1" fill="#000"/>
+                <rect x="6" y="4" width="3" height="1" fill="#4a2306"/>
+                <rect x="3" y="6" width="6" height="4" fill="#e52521"/>
+                <rect x="4" y="6" width="4" height="4" fill="#002fbe"/>
+                <rect x="2" y="7" width="1" height="2" fill="#e52521"/>
+                <rect x="9" y="7" width="1" height="2" fill="#e52521"/>
+              </svg>
+              <h3 style={{
+                fontFamily: 'monospace',
+                fontWeight: '900',
+                fontSize: '18px',
+                color: '#ffffff',
+                textTransform: 'uppercase',
+                margin: 0,
+                letterSpacing: '1px',
+                textShadow: '2px 2px 0px #000000'
+              }}>
+                USER METRICS
+              </h3>
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <rect x="3" y="1" width="6" height="2" fill="#43b047"/>
+                <rect x="4" y="2" width="7" height="1" fill="#43b047"/>
+                <rect x="4" y="3" width="5" height="3" fill="#fcb494"/>
+                <rect x="3" y="4" width="1" height="2" fill="#fcb494"/>
+                <rect x="7" y="3" width="1" height="1" fill="#000"/>
+                <rect x="6" y="4" width="3" height="1" fill="#4a2306"/>
+                <rect x="3" y="6" width="6" height="4" fill="#43b047"/>
+                <rect x="4" y="6" width="4" height="4" fill="#002fbe"/>
+                <rect x="2" y="7" width="1" height="2" fill="#43b047"/>
+                <rect x="9" y="7" width="1" height="2" fill="#43b047"/>
+              </svg>
+            </div>
+
+            {/* Metrics List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#43b047' }}>1. TOTAL ACCOUNTS</span>
+                <span style={{ color: '#ffffff' }}>{totalUsers} (+{newUsersThisWeek} new)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#43b047' }}>2. ACTIVE USERS (30D)</span>
+                <span style={{ color: '#00f0ff' }}>{activeUsers} ({totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0}%)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#ffffff' }}>3. ATS MATCH SCANS</span>
+                <span style={{ color: '#fbd000' }}>{resumeAnalysesCount} (AVG: {averageAtsScore}%)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#ffffff' }}>4. MOCK INTERVIEWS</span>
+                <span style={{ color: '#fbd000' }}>{mockInterviewsCount} runs</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-green">
-            <Users size={22} />
-          </div>
-          <div className="kpi-title">Active Users (30d)</div>
-          <div className="kpi-value">{activeUsers}</div>
-          <div className="kpi-footer">
-            <span>Uptime activity:</span>
-            <span style={{ fontWeight: 600, color: 'var(--admin-text-dark)' }}>
-              {totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0}%
-            </span>
-          </div>
-        </div>
+        {/* Board 2: AI Telemetry */}
+        <div style={{
+          background: 'repeating-linear-gradient(90deg, #b03a00, #b03a00 24px, #000000 24px, #000000 26px), repeating-linear-gradient(0deg, #b03a00, #b03a00 16px, #000000 16px, #000000 18px)',
+          border: '3px solid #000000',
+          padding: '12px',
+          boxShadow: '6px 6px 0px #000000'
+        }}>
+          <div style={{
+            background: '#000000',
+            border: '6px double #fbd000',
+            padding: '20px 16px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <svg width="24" height="24" viewBox="0 0 12 12" style={{ transform: 'scaleX(-1)' }}>
+                <rect x="3" y="1" width="6" height="2" fill="#e52521"/>
+                <rect x="4" y="2" width="7" height="1" fill="#e52521"/>
+                <rect x="4" y="3" width="5" height="3" fill="#fcb494"/>
+                <rect x="3" y="4" width="1" height="2" fill="#fcb494"/>
+                <rect x="7" y="3" width="1" height="1" fill="#000"/>
+                <rect x="6" y="4" width="3" height="1" fill="#4a2306"/>
+                <rect x="3" y="6" width="6" height="4" fill="#e52521"/>
+                <rect x="4" y="6" width="4" height="4" fill="#002fbe"/>
+                <rect x="2" y="7" width="1" height="2" fill="#e52521"/>
+                <rect x="9" y="7" width="1" height="2" fill="#e52521"/>
+              </svg>
+              <h3 style={{
+                fontFamily: 'monospace',
+                fontWeight: '900',
+                fontSize: '18px',
+                color: '#ffffff',
+                textTransform: 'uppercase',
+                margin: 0,
+                letterSpacing: '1px',
+                textShadow: '2px 2px 0px #000000'
+              }}>
+                AI TELEMETRY
+              </h3>
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <rect x="3" y="1" width="6" height="2" fill="#43b047"/>
+                <rect x="4" y="2" width="7" height="1" fill="#43b047"/>
+                <rect x="4" y="3" width="5" height="3" fill="#fcb494"/>
+                <rect x="3" y="4" width="1" height="2" fill="#fcb494"/>
+                <rect x="7" y="3" width="1" height="1" fill="#000"/>
+                <rect x="6" y="4" width="3" height="1" fill="#4a2306"/>
+                <rect x="3" y="6" width="6" height="4" fill="#43b047"/>
+                <rect x="4" y="6" width="4" height="4" fill="#002fbe"/>
+                <rect x="2" y="7" width="1" height="2" fill="#43b047"/>
+                <rect x="9" y="7" width="1" height="2" fill="#43b047"/>
+              </svg>
+            </div>
 
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-orange">
-            <FileText size={22} />
-          </div>
-          <div className="kpi-title">ATS Match Scans</div>
-          <div className="kpi-value">{resumeAnalysesCount}</div>
-          <div className="kpi-footer">
-            <Percent size={14} />
-            <span>Avg Match score:</span>
-            <span style={{ fontWeight: 600, color: 'var(--admin-text-dark)' }}>{averageAtsScore}%</span>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-purple">
-            <MessageSquare size={22} />
-          </div>
-          <div className="kpi-title">Mock Interviews</div>
-          <div className="kpi-value">{mockInterviewsCount}</div>
-          <div className="kpi-footer">
-            <span>Total practice sessions completed</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Second KPI row for AI Metrics */}
-      <div className="kpi-grid animate-fade-in">
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-blue">
-            <Sparkles size={22} />
-          </div>
-          <div className="kpi-title">AI Requests (Gemini + Groq)</div>
-          <div className="kpi-value">{totalAiRequests}</div>
-          <div className="kpi-footer">
-            <span>Gemini: {totalGemini} | Groq: {totalGroq}</span>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-green">
-            <Percent size={22} />
-          </div>
-          <div className="kpi-title">LLM Success Rate</div>
-          <div className="kpi-value">{successRate}%</div>
-          <div className="kpi-footer">
-            <span style={{ color: failedAiRequests > 0 ? 'var(--admin-danger)' : 'var(--admin-success)' }}>
-              {failedAiRequests} failed requests recorded
-            </span>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-orange">
-            <Clock size={22} />
-          </div>
-          <div className="kpi-title">Average Latency</div>
-          <div className="kpi-value">{averageLatency} ms</div>
-          <div className="kpi-footer">
-            <span>API round-trip response time</span>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper kpi-red">
-            <DollarSign size={22} />
-          </div>
-          <div className="kpi-title">Estimated Cost</div>
-          <div className="kpi-value">${estimatedCost.toFixed(4)}</div>
-          <div className="kpi-footer">
-            <span>Calculated from token weightings</span>
+            {/* Metrics List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#43b047' }}>1. AI REQUESTS</span>
+                <span style={{ color: '#ffffff' }}>{totalAiRequests} (G:{totalGemini}|Q:{totalGroq})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#43b047' }}>2. LLM SUCCESS RATE</span>
+                <span style={{ color: '#00f0ff' }}>{successRate}% ({failedAiRequests} failed)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#ffffff' }}>3. AVERAGE LATENCY</span>
+                <span style={{ color: '#fbd000' }}>{averageLatency} ms</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '6px' }}>
+                <span style={{ color: '#ffffff' }}>4. ESTIMATED COST</span>
+                <span style={{ color: '#fbd000' }}>${estimatedCost.toFixed(4)}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

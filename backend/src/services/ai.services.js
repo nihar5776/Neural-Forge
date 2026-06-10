@@ -509,20 +509,68 @@ Requirements:
 - Do NOT generate unrelated or static generic trivia questions. Make them highly dynamic and specific to the requested scope: ${scope}.
 `;
 
-    const response = await generateContentWithFallback({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-      },
-      userId,
-      feature: "Quiz Generation"
-    });
+    if (process.env.GROQ_API_KEY) {
+      console.log("Routing Quiz generation to Groq Llama-3.3-70b-versatile...");
+      const axios = require("axios");
+      const startTime = Date.now();
+      
+      const response = await axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: "You are an expert technical interviewer. Output JSON matching the requested schema." },
+            { role: "user", content: prompt }
+          ],
+          response_format: { type: "json_object" }
+        },
+        {
+          headers: {
+            "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
 
-    console.log("Quiz Raw AI Response:", response.text);
-    const parsed = JSON.parse(response.text);
-    const validated = aiQuizSchema.parse(parsed);
-    return validated;
+      const contentText = response.data.choices[0].message.content;
+      console.log("Quiz Raw Groq Response:", contentText);
+      const parsed = JSON.parse(contentText);
+      const validated = aiQuizSchema.parse(parsed);
+
+      let inputTokens = 0;
+      let outputTokens = 0;
+      if (response.data.usage) {
+        inputTokens = response.data.usage.prompt_tokens || 0;
+        outputTokens = response.data.usage.completion_tokens || 0;
+      }
+      logAiRequest({
+        provider: "Groq",
+        model: "llama-3.3-70b-versatile",
+        user: userId,
+        feature: "Quiz Generation",
+        inputTokens,
+        outputTokens,
+        latencyMs: Date.now() - startTime,
+        success: true
+      });
+
+      return validated;
+    } else {
+      const response = await generateContentWithFallback({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+        },
+        userId,
+        feature: "Quiz Generation"
+      });
+
+      console.log("Quiz Raw AI Response:", response.text);
+      const parsed = JSON.parse(response.text);
+      const validated = aiQuizSchema.parse(parsed);
+      return validated;
+    }
   } catch (error) {
     console.error("Quiz Generation AI Error:", error);
     if (error instanceof z.ZodError) {
