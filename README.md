@@ -1,4 +1,4 @@
-# 🚀 VidyaGuide: Agentic AI Career Coach & Resume Mentor
+# 🚀 Neural Forge: Agentic AI Career Coach & Resume Mentor
 
 <div align="center">
 
