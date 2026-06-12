@@ -42,8 +42,22 @@ const finalFeedbackSchema = z.object({
  */
 async function runPlannerAgent({ jobRole, resumeText = '', difficulty, userId = null }) {
   try {
+    // Unique seed per session to diversify focus area generation
+    const sessionSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const focusVariants = [
+      "Prioritise system design and architecture-level focus areas.",
+      "Prioritise debugging, performance, and optimisation focus areas.",
+      "Prioritise core language internals and runtime behaviour.",
+      "Prioritise integration, APIs, and real-world collaboration scenarios.",
+      "Prioritise security, testing, and code quality focus areas."
+    ];
+    const focusHint = focusVariants[Math.floor(Math.random() * focusVariants.length)];
+
     const prompt = `
 You are the Planner Agent of a Mock Interview system.
+Session seed: ${sessionSeed}
+${focusHint}
+
 Your goal is to parse and determine:
 1. Target Job Role: ${jobRole}
 2. Resume availability: ${resumeText ? 'Yes' : 'No'}
@@ -54,7 +68,10 @@ If a resume is available, extract:
 - Core Skills
 - Key Technologies
 
-Then, outline 3-5 focus areas/topics for the interview (e.g. "React State Management", "Conflict Resolution", etc.).
+Then, outline 3-5 SPECIFIC and VARIED focus areas/topics for the interview.
+IMPORTANT: Do NOT generate generic focus areas like "JavaScript Basics" or "Problem Solving".
+Make them specific to the job role, e.g. "React Server Components vs Client Components", "Node.js event loop and concurrency model", "REST vs GraphQL trade-offs for this role".
+Use the session seed to select a different angle/combination of topics each time.
 
 Resume Content:
 ${resumeText || "No resume uploaded."}
@@ -115,8 +132,21 @@ The candidate's extracted profile:
 - Technologies: ${JSON.stringify(extractedDetails.technologies)}
 ` : '';
 
+    // Unique question seed to prevent same question across different users/sessions
+    const questionSeed = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const angleVariants = [
+      "Ask about an unexpected edge case or failure mode.",
+      "Ask about trade-offs or choosing between two common approaches.",
+      "Ask about real-world implementation and pitfalls.",
+      "Ask about performance implications or scalability.",
+      "Ask about debugging a specific type of issue in this domain."
+    ];
+    const questionAngle = targetCategory === "behavioral" ? "" :
+      angleVariants[Math.floor(Math.random() * angleVariants.length)];
+
     const prompt = `
 You are the Interview Agent.
+Question seed: ${questionSeed}
 Your job is to generate exactly ONE interview question (Question #${nextQuestionIndex}) based on:
 - Job Role: "${jobRole}"
 - Difficulty: "${difficulty}"
@@ -125,6 +155,7 @@ Your job is to generate exactly ONE interview question (Question #${nextQuestion
 ${resumeContext}
 
 Target Category: "${targetCategory}"
+${questionAngle ? `Question angle hint: ${questionAngle}` : ''}
 
 Target difficulty guidelines:
 - Easy: tests basic definitions, syntax, simple concepts.
@@ -133,11 +164,13 @@ Target difficulty guidelines:
 
 Behavioral Question Guidelines:
 - If Target Category is "behavioral", generate a standard, interpersonal/soft-skills behavioral question (e.g., conflict resolution, handling tight deadlines, coping with project changes, communicating with non-technical stakeholders, or dealing with mistakes).
-- Do NOT make the behavioral question heavily technical or require deep system-design/coding problem solving. Keep it focused on human scenarios and collaboration, contextualized to the role (e.g. "Tell me about a time you had a difference of opinion with a team member. How did you resolve it and work together?").
+- Do NOT make the behavioral question heavily technical or require deep system-design/coding problem solving.
 
-Rule:
-- Do NOT generate questions similar to or covering the exact same topics already present in the "Previous Question/Answer History".
+CRITICAL UNIQUENESS RULES:
+- Do NOT generate questions similar to or covering the exact same topics already in the "Previous Question/Answer History".
+- The question seed is unique per call — use it to ensure this question is fresh and different from what any other session might produce.
 - Make the question direct, specific, and realistic for a candidate applying for: "${jobRole}".
+- Do NOT use common boilerplate or textbook questions.
 
 Return ONLY valid JSON matching this schema:
 {

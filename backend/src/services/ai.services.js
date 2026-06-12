@@ -3,7 +3,6 @@ const { z } = require("zod");
 const { logAiRequest } = require("./aiLogger");
 const axios = require("axios");
 
-
 console.log(
   "API KEY LOADED:",
   !!process.env.GOOGLE_GEMINI_API_KEY
@@ -12,6 +11,75 @@ console.log(
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GEMINI_API_KEY
 });
+
+/**
+ * Robustly parses an AI response string as JSON.
+ * Handles:
+ *   1. Markdown code fences: ```json ... ``` or ``` ... ```
+ *   2. Truncated responses: extracts the longest valid JSON object/array
+ *      using bracket matching so a cut-off at token limit doesn't crash.
+ *   3. Leading/trailing whitespace or stray text around valid JSON.
+ */
+function safeParseJSON(raw) {
+  if (!raw || typeof raw !== 'string') {
+    throw new Error('AI returned an empty or non-string response.');
+  }
+
+  // Step 1: Strip markdown code fences (```json ... ``` or ``` ... ```)
+  let cleaned = raw.trim();
+  const fenceMatch = cleaned.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim();
+  }
+
+  // Step 2: Try direct parse first (fastest path)
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {
+    // Fall through to bracket-matching extraction
+  }
+
+  // Step 3: Bracket-matching extraction for truncated responses
+  // Find the first '{' or '[' and walk forward counting depth.
+  // The longest valid JSON object/array found is returned.
+  const startIdx = cleaned.search(/[{[]/);
+  if (startIdx === -1) {
+    throw new SyntaxError(`No JSON object or array found in AI response. Preview: ${cleaned.substring(0, 200)}`);
+  }
+
+  const openChar = cleaned[startIdx];
+  const closeChar = openChar === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let lastValidEnd = -1;
+
+  for (let i = startIdx; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === openChar) depth++;
+    else if (ch === closeChar) {
+      depth--;
+      if (depth === 0) { lastValidEnd = i; break; }
+    }
+  }
+
+  if (lastValidEnd !== -1) {
+    const candidate = cleaned.substring(startIdx, lastValidEnd + 1);
+    try {
+      const result = JSON.parse(candidate);
+      console.warn(`[safeParseJSON] Recovered JSON from truncated response (extracted ${candidate.length} of ${cleaned.length} chars).`);
+      return result;
+    } catch (e) {
+      throw new SyntaxError(`Bracket-matched JSON extraction failed: ${e.message}. Preview: ${candidate.substring(0, 300)}`);
+    }
+  }
+
+  throw new SyntaxError(`Could not extract valid JSON from AI response. Preview: ${cleaned.substring(0, 300)}`);
+}
 
 const interviewReportSchema = z.object({
   title: z.string(),
@@ -58,8 +126,27 @@ async function generateInterviewReport({
   userId = null
 }) {
   try {
+    // Inject a random seed so identical inputs still vary in question selection
+    const sessionSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
     const prompt = `
-You are an expert technical recruiter.
+You are a strict, senior technical recruiter conducting an honest, unbiased evaluation.
+Session seed (use this to randomise your question selection): ${sessionSeed}
+
+Your MOST IMPORTANT task is to provide an HONEST matchScore. Follow this rubric rigorously:
+
+== MATCH SCORE RUBRIC ==
+- 0-20:   Resume is entirely unrelated to the job (e.g. a chef applying for a software engineer role).
+- 21-40:  Resume is from a different field; only 1-2 transferable soft skills match.
+- 41-55:  Resume is in a related domain but candidate lacks most required hard skills.
+- 56-70:  Partial match — candidate has some relevant skills but several key requirements are missing.
+- 71-85:  Good match — candidate meets most requirements with a few skill gaps.
+- 86-95:  Strong match — nearly all requirements are met with minor gaps.
+- 96-100: Perfect or near-perfect alignment — all hard skills, experience level, and domain match.
+
+CRITICAL RULES FOR matchScore:
+- If the resume domain and job description domain are UNRELATED, the score MUST be 25 or below.
+- Do NOT award a score above 55 unless the resume explicitly demonstrates at least 50% of the specific technical skills listed in the job description.
+- Do NOT round up or be generous. Be honest like a senior recruiter who must justify this score to their hiring manager.
 
 Analyze the candidate profile and job description.
 
@@ -69,7 +156,7 @@ The JSON MUST EXACTLY follow this structure:
 
 {
   "title": "string",
-  "matchScore": 95,
+  "matchScore": 0,
   "technicalQuestions": [
     {
       "question": "string",
@@ -106,13 +193,14 @@ The JSON MUST EXACTLY follow this structure:
   ]
 }
 Requirements:
-- matchScore between 0 and 100
-- 5-7 technical questions
-- 3-5 behavioral questions
-- realistic skill gaps
-- preparationPlan must have a minimum of 7 days, but scale it dynamically based on the complexity and severity of the identified skillGaps (extending up to 14, 21, or 30+ days if severe gaps are found).
-- For each day in the preparationPlan, you MUST include a 'resources' array containing 1-2 highly specific learning resources. Each resource should have a descriptive title, a valid URL (use real search URLs like 'https://www.youtube.com/results?search_query=...' or official documentation URLs like 'https://react.dev/'), and a 'type' of either 'youtube' or 'official'.
-- title should be the job title
+- matchScore MUST follow the rubric above exactly. Be strict and honest.
+- 5-7 technical questions that are UNIQUE to this specific job description and candidate — do NOT use generic questions.
+- 3-5 behavioral questions.
+- Identify all realistic skill gaps honestly based on the actual job description requirements.
+- preparationPlan MUST have between 7 and 14 days. Scale within this range based on skill gap severity. DO NOT exceed 14 days.
+- Keep each day's tasks concise (2-3 tasks max, 1 resource max) to stay within response limits.
+- title should be the job title from the job description.
+- Generate FRESH, VARIED questions each time — do not use common boilerplate questions.
 Resume:
 ${resume}
 Self Description:
@@ -131,10 +219,10 @@ ${jobDescription}
       feature: "Resume Analysis"
     });
 
-    console.log("RAW RESPONSE:");
-    console.log(response.text);
+    console.log("RAW RESPONSE (first 500 chars):");
+    console.log((response.text || '').substring(0, 500));
 
-    const parsedResponse = JSON.parse(response.text);
+    const parsedResponse = safeParseJSON(response.text);
     // Normalize severity to lowercase — AI sometimes returns "High"/"Medium"/"Low"
     if (Array.isArray(parsedResponse.skillGaps)) {
       parsedResponse.skillGaps = parsedResponse.skillGaps.map(gap => ({
@@ -642,14 +730,34 @@ async function generateQuizAgentically({ mode, skills, jobTitle, numQuestions, d
       ? `Job Description / Title: "${jobTitle}"`
       : `Target Skills: "${skills.join(', ')}"`;
 
+    // Inject randomness: unique seed + random topic pool selection to prevent repeated questions
+    const sessionSeed = Math.random().toString(36).substring(2, 12).toUpperCase();
+    const timestamp = Date.now();
+    const topicVariants = [
+      "Focus on edge cases, error handling, and less-common APIs.",
+      "Focus on real-world debugging scenarios and performance optimisation.",
+      "Focus on best practices, design patterns, and architectural trade-offs.",
+      "Focus on comparisons between approaches, gotchas, and anti-patterns.",
+      "Focus on practical implementation, code snippets, and runtime behaviour."
+    ];
+    const topicHint = topicVariants[Math.floor(Math.random() * topicVariants.length)];
+
     const prompt = `
-You are an expert technical interviewer.
+You are an expert technical interviewer generating a UNIQUE quiz session.
+Session ID: ${sessionSeed} | Timestamp: ${timestamp}
+${topicHint}
 
 Generate a multiple-choice quiz based on:
 ${scope}
 
 Difficulty Level: ${difficulty}
 Number of Questions: ${numQuestions}
+
+CRITICAL UNIQUENESS RULES:
+- This is a fresh session. Generate COMPLETELY NEW questions that are unlikely to appear in another quiz session for the same topic.
+- Do NOT use common textbook questions or standard interview boilerplate.
+- Draw from a wide variety of sub-topics within the scope — do not cluster around the most obvious concepts.
+- Use the session ID as entropy to vary your question selection pattern each time.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -672,9 +780,10 @@ Return ONLY valid JSON matching this schema:
 Requirements:
 - Generate exactly ${numQuestions} questions.
 - Every question must have exactly 4 choices in the 'options' array.
-- The 'correctAnswer' must be a exact string match of one of the options.
-- Target difficulty: ${difficulty}. Easy should test basic definitions/use-cases; Medium should test practical coding/scenario-based tasks; Hard should test deep architecture, troubleshooting, and edge cases.
-- Do NOT generate unrelated or static generic trivia questions. Make them highly dynamic and specific to the requested scope: ${scope}.
+- The 'correctAnswer' must be an exact string match of one of the options.
+- Target difficulty: ${difficulty}. Easy = basic definitions/use-cases; Medium = practical coding/scenarios; Hard = deep architecture, troubleshooting, and edge cases.
+- Make every question highly specific and contextual to: ${scope}.
+- Vary question formats: some should test knowledge recall, some reasoning, some code comprehension.
 `;
 
     const response = await generateContentWithFallback({
@@ -687,8 +796,8 @@ Requirements:
       feature: "Quiz Generation"
     });
 
-    console.log("Quiz Raw AI Response:", response.text);
-    const parsed = JSON.parse(response.text);
+    console.log("Quiz Raw AI Response (first 300 chars):", (response.text || '').substring(0, 300));
+    const parsed = safeParseJSON(response.text);
     const validated = aiQuizSchema.parse(parsed);
     return validated;
   } catch (error) {
@@ -746,8 +855,8 @@ const tailoredResumeSchema = z.object({
 async function generateTailoredResume({ resumeText, jobDescription, userId = null }) {
   try {
     const prompt = `
-You are an expert ATS (Applicant Tracking System) optimizer and professional resume writer.
-Your task is to tailor the provided Resume to perfectly align with the provided Job Description.
+You are a strict, senior ATS (Applicant Tracking System) optimizer and professional resume writer.
+Your task is to tailor the provided Resume to align with the provided Job Description.
 
 CRITICAL RULES:
 1. NEVER invent, fabricate, or hallucinate any experience, projects, education, certifications, or skills that the candidate does not possess according to their original resume.
@@ -755,7 +864,18 @@ CRITICAL RULES:
 3. Quantify achievements where possible if the original resume implies them.
 4. Naturally weave in keywords from the Job Description into the summary and experience bullet points.
 5. Create a professional, concise summary that highlights alignment with the target role.
-6. Provide an ATS Analysis section detailing the match score, matching skills, missing skills, and actionable suggestions for improvement.
+6. Provide an HONEST ATS Analysis with a match score that reflects true keyword and skill alignment.
+
+== MATCH SCORE RUBRIC (follow strictly for atsAnalysis.matchScore) ==
+- 0-20:   Resume domain is completely unrelated to the job (e.g. chef applying for software role).
+- 21-40:  Different field; only 1-2 transferable soft skills exist.
+- 41-55:  Related domain but candidate is missing most required hard skills.
+- 56-70:  Partial match — some relevant skills present but several key requirements are missing.
+- 71-85:  Good match — meets most requirements with a few gaps.
+- 86-95:  Strong match — nearly all requirements met with minor gaps.
+- 96-100: Near-perfect alignment across skills, experience, and domain.
+
+CRITICAL: Do NOT award a score above 55 unless the resume explicitly demonstrates at least 50% of the required skills from the job description. If domains are completely different, the score MUST be 25 or below.
 
 The JSON MUST EXACTLY follow this structure:
 {
@@ -793,7 +913,7 @@ The JSON MUST EXACTLY follow this structure:
     }
   ],
   "atsAnalysis": {
-    "matchScore": 95,
+    "matchScore": 0,
     "matchingSkills": ["string"],
     "missingSkills": ["string"],
     "keywordMatchAnalysis": "string",
@@ -820,8 +940,8 @@ ${jobDescription}
       feature: "Resume Tailoring"
     });
 
-    console.log("Tailored Resume Raw AI Response:", response.text);
-    const parsed = JSON.parse(response.text);
+    console.log("Tailored Resume Raw AI Response (first 300 chars):", (response.text || '').substring(0, 300));
+    const parsed = safeParseJSON(response.text);
     const validated = tailoredResumeSchema.parse(parsed);
     return validated;
   } catch (error) {

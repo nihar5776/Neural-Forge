@@ -18,17 +18,18 @@ An advanced, end-to-end **Agentic AI-powered career coach** designed to automate
 
 ## 🗺️ System Architecture
 
-The diagram below details the data flow and integration between the Vite client, the MERN server, and the Google Gemini API agent:
+The diagram below details the data flow and integration between the React 19 client, the Express 5 MERN backend, the AI engine, and all external services:
 
 ```mermaid
 graph TD
-    Client[React Client / Vite] -->|1. Uploads PDF or Selects Resume| Backend[Express Backend / Node.js]
-    Backend -->|2. Saves User / Resume / Quiz / Interview Results| Database[(MongoDB / Mongoose)]
-    Backend -->|3. Feeds Raw Parsing + Settings| Gemini[Google Gemini AI / Zod Validation]
-    Gemini -->|4. Tool Call Request| JobScraper[LinkedIn & Unstop Scraper Service]
-    JobScraper -->|5. Scraped Opportunity Feeds| Gemini
-    Gemini -->|6. Validated Structured JSON| Backend
-    Backend -->|7. API Response / HSL Dashboard render| Client
+    Client[React 19 Client / Vite 8] -->|1. Upload PDF / Select Resume / Send Request| Backend[Express 5 Backend / Node.js]
+    Backend -->|2. Persist & Retrieve Users, Resumes, Reports, Quizzes, Sessions| Database[(MongoDB Atlas / Mongoose)]
+    Backend -->|3. Parse PDF + Package Prompt + Settings| AIEngine["AI Engine — gemini-3-flash-preview
+    Fallback: gemini-2.5-flash → Groq llama-3.3-70b"]
+    AIEngine -->|4. Tool Call: fetchJobPostings| Scraper[LinkedIn + Shine Web Scraper]
+    Scraper -->|5. Raw Job Listings Feed| AIEngine
+    AIEngine -->|6. Validated Structured JSON / Zod Schema| Backend
+    Backend -->|7. API Response — Dashboard, Reports, Quiz, Jobs, Interview| Client
 ```
 
 ---

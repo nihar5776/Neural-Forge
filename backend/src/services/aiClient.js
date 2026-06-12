@@ -13,6 +13,49 @@ function isGroqEnabled() {
   return !!process.env.GROQ_API_KEY;
 }
 
+/**
+ * Robustly parse an AI response — strips markdown fences and recovers truncated JSON.
+ */
+function safeParseJSON(raw) {
+  if (!raw || typeof raw !== 'string') {
+    throw new Error('AI returned an empty or non-string response.');
+  }
+  let cleaned = raw.trim();
+  const fenceMatch = cleaned.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
+  if (fenceMatch) cleaned = fenceMatch[1].trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {}
+
+  // Bracket-matching extraction for truncated / noisy output
+  const startIdx = cleaned.search(/[{[]/);
+  if (startIdx === -1) throw new SyntaxError(`No JSON found in AI response. Preview: ${cleaned.substring(0, 200)}`);
+  const openChar = cleaned[startIdx];
+  const closeChar = openChar === '{' ? '}' : ']';
+  let depth = 0, inString = false, escape = false, lastValidEnd = -1;
+  for (let i = startIdx; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === openChar) depth++;
+    else if (ch === closeChar) { depth--; if (depth === 0) { lastValidEnd = i; break; } }
+  }
+  if (lastValidEnd !== -1) {
+    const candidate = cleaned.substring(startIdx, lastValidEnd + 1);
+    try {
+      const result = JSON.parse(candidate);
+      console.warn(`[safeParseJSON/aiClient] Recovered ${candidate.length} chars of ${cleaned.length}`);
+      return result;
+    } catch (e) {
+      throw new SyntaxError(`Bracket extraction failed: ${e.message}`);
+    }
+  }
+  throw new SyntaxError(`Could not extract JSON from AI response. Preview: ${cleaned.substring(0, 300)}`);
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -122,7 +165,7 @@ async function chatCompletion({ messages, systemInstruction, userId = null, feat
         }
 
         const contentText = response.data.choices[0].message.content;
-        return JSON.parse(contentText);
+        return safeParseJSON(contentText);
       });
     } else {
       // Route to Gemini
@@ -151,7 +194,7 @@ async function chatCompletion({ messages, systemInstruction, userId = null, feat
           usage.outputTokens = response.usageMetadata.candidatesTokenCount || 0;
         }
 
-        return JSON.parse(response.text);
+        return safeParseJSON(response.text);
       };
 
       const preferredModel = useGeminiFallbackDirectly ? "gemini-2.5-flash" : "gemini-3-flash-preview";
